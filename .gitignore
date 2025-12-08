@@ -7,6 +7,8 @@
 .classpath      # Eclipse 配置
 .project        # Eclipse 配置
 .settings/      # Eclipse 配置
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # ========== 前端项目（Node.js/Vue/React 等） ==========
 # 依赖目录
@@ -21,6 +23,7 @@ yarn-error.log*
 # 环境变量文件（若包含敏感信息，需忽略；若为通用配置可保留）
 .env.local
 .env.*.local
+frontend/dist/
 
 # ========== 后端项目（Java/Maven/Gradle） ==========
 # 编译产物

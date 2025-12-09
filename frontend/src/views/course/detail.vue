@@ -12,12 +12,19 @@
               <span>{{ course.teacherName }}</span>
               <span>{{ course.lessonCount }}课时</span>
               <span>{{ course.studyCount }}人学习</span>
-              <span>{{ course.score }}分</span>
+              <span><el-rate v-model="course.score" disabled show-score text-color="#fff" score-template="{value}分" /></span>
             </div>
             <div class="action">
               <div class="price" v-if="course.isFree">免费</div>
               <div class="price" v-else>¥{{ course.price }}<del v-if="course.originalPrice > course.price">¥{{ course.originalPrice }}</del></div>
-              <el-button type="primary" round :disabled="hasBought" @click="handleBuy">{{ hasBought ? '已购买' : (course.isFree ? '立即学习' : '立即购买') }}</el-button>
+              <el-button type="primary" round :disabled="hasBought" @click="handleBuy">
+                {{ hasBought ? '已购买' : (course.isFree ? '立即学习' : '立即购买') }}
+              </el-button>
+              <el-button v-if="hasBought" type="success" round @click="goStudy">开始学习</el-button>
+              <el-button :type="isFavorite ? 'warning' : 'default'" round @click="toggleFavorite">
+                <el-icon><Star /></el-icon>
+                {{ isFavorite ? '已收藏' : '收藏' }}
+              </el-button>
             </div>
           </div>
         </div>
@@ -38,13 +45,69 @@
               <el-collapse v-model="activeChapters">
                 <el-collapse-item v-for="ch in course.chapters" :key="ch.id" :name="ch.id">
                   <template #title><div class="ch-title"><span>{{ ch.title }}</span><span class="cnt">{{ ch.lessons?.length || 0 }}课时</span></div></template>
-                  <div v-for="ls in ch.lessons" :key="ls.id" class="lesson">
+                  <div v-for="ls in ch.lessons" :key="ls.id" class="lesson" @click="handleLessonClick(ls)">
                     <span class="name">{{ ls.title }}</span>
                     <span class="dur">{{ Math.floor(ls.duration/60) }}:{{ (ls.duration%60).toString().padStart(2,'0') }}</span>
                     <el-tag v-if="ls.isFree" size="small" type="success">试看</el-tag>
+                    <el-icon v-if="getLessonFinished(ls.id)" class="finished"><CircleCheck /></el-icon>
                   </div>
                 </el-collapse-item>
               </el-collapse>
+            </el-tab-pane>
+            <el-tab-pane label="学员评价" name="reviews">
+              <div class="reviews-section">
+                <!-- 评价统计 -->
+                <div class="review-stats">
+                  <div class="avg-score">
+                    <span class="num">{{ course.score || '0.0' }}</span>
+                    <el-rate v-model="course.score" disabled />
+                    <span class="total">{{ reviewTotal }}条评价</span>
+                  </div>
+                </div>
+
+                <!-- 发表评价 -->
+                <div class="add-review" v-if="hasBought && !hasReviewed">
+                  <h4>发表评价</h4>
+                  <div class="review-form">
+                    <div class="row">
+                      <span class="label">评分：</span>
+                      <el-rate v-model="reviewForm.score" />
+                    </div>
+                    <div class="row">
+                      <el-input v-model="reviewForm.content" type="textarea" :rows="3" placeholder="写下您的学习感受..." maxlength="500" show-word-limit />
+                    </div>
+                    <div class="row">
+                      <el-checkbox v-model="reviewForm.isAnonymous" :true-value="1" :false-value="0">匿名评价</el-checkbox>
+                      <el-button type="primary" size="small" :loading="submittingReview" @click="submitReview">提交评价</el-button>
+                    </div>
+                  </div>
+                </div>
+                <div class="add-review tip" v-else-if="hasReviewed">
+                  <el-alert title="您已评价过该课程" type="success" :closable="false" />
+                </div>
+                <div class="add-review tip" v-else-if="!hasBought">
+                  <el-alert title="购买课程后才能评价哦~" type="info" :closable="false" />
+                </div>
+
+                <!-- 评价列表 -->
+                <div class="review-list">
+                  <div v-for="r in reviews" :key="r.id" class="review-item">
+                    <el-avatar :size="36" :src="r.avatar || defaultAvatar" />
+                    <div class="review-body">
+                      <div class="review-header">
+                        <span class="name">{{ r.nickname || '用户' }}</span>
+                        <el-rate v-model="r.score" disabled size="small" />
+                      </div>
+                      <p class="review-content">{{ r.content || '用户未填写评价内容' }}</p>
+                      <span class="review-time">{{ formatTime(r.createTime) }}</span>
+                    </div>
+                  </div>
+                  <el-empty v-if="!reviews.length" description="暂无评价" />
+                  <div class="load-more" v-if="reviewTotal > reviews.length">
+                    <el-button text type="primary" @click="loadMoreReviews">加载更多</el-button>
+                  </div>
+                </div>
+              </div>
             </el-tab-pane>
           </el-tabs>
         </div>
@@ -61,13 +124,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Star, CircleCheck } from '@element-plus/icons-vue'
 import { getCourseDetail } from '@/api/course'
 import { createOrder, checkBuyCourse } from '@/api/order'
+import { addReview, getReviewList, checkReviewed, ReviewInfo } from '@/api/review'
+import { addFavorite, removeFavorite, checkFavorite } from '@/api/favorite'
+import { getCourseStudyRecords, StudyRecord } from '@/api/study'
 import { useUserStore } from '@/stores/user'
-import type { CourseDetail } from '@/types/course'
+import type { CourseDetail, LessonInfo } from '@/types/course'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,35 +144,159 @@ const course = ref<CourseDetail | null>(null)
 const activeTab = ref('intro')
 const activeChapters = ref<number[]>([])
 const hasBought = ref(false)
+const isFavorite = ref(false)
+const hasReviewed = ref(false)
 const defaultCover = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600'
+const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
+// 评价相关
+const reviews = ref<ReviewInfo[]>([])
+const reviewTotal = ref(0)
+const reviewPage = ref(1)
+const submittingReview = ref(false)
+const reviewForm = reactive({
+  score: 5,
+  content: '',
+  isAnonymous: 0
+})
+
+// 学习记录
+const studyRecords = ref<StudyRecord[]>([])
+
+function formatTime(time: string) {
+  if (!time) return ''
+  const date = new Date(time)
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+}
+
+function getLessonFinished(lessonId: number) {
+  const record = studyRecords.value.find(r => r.lessonId === lessonId)
+  return record && record.isFinished === 1
+}
 
 async function load() {
-  const id = Number(route.params.id)
+  const id = route.params.id as string
   if (!id) return
   loading.value = true
   try {
     const res = await getCourseDetail(id)
-    course.value = res.data
+    course.value = {
+      ...res.data,
+      isFree: Number(res.data.isFree),
+      price: Number(res.data.price),
+      originalPrice: Number(res.data.originalPrice)
+    }
     if (res.data.chapters?.length) activeChapters.value = [res.data.chapters[0].id]
-    if (userStore.isLoggedIn) { const r = await checkBuyCourse(id); hasBought.value = r.data }
+    
+    if (userStore.isLoggedIn) {
+      const [buyRes, favRes, reviewedRes] = await Promise.all([
+        checkBuyCourse(id as any),
+        checkFavorite(id as any),
+        checkReviewed(id as any)
+      ])
+      hasBought.value = buyRes.data
+      isFavorite.value = favRes.data
+      hasReviewed.value = reviewedRes.data
+
+      // 如果已购买，加载学习记录
+      if (hasBought.value) {
+        const recordsRes = await getCourseStudyRecords(id as any)
+        studyRecords.value = recordsRes.data || []
+      }
+    }
+
+    // 加载评价
+    loadReviews()
   } catch (e) { console.error(e) }
   finally { loading.value = false }
+}
+
+async function loadReviews() {
+  if (!course.value) return
+  try {
+    const res = await getReviewList(course.value.id, reviewPage.value)
+    if (reviewPage.value === 1) {
+      reviews.value = res.data.records
+    } else {
+      reviews.value.push(...res.data.records)
+    }
+    reviewTotal.value = res.data.total
+  } catch (e) { console.error(e) }
+}
+
+async function loadMoreReviews() {
+  reviewPage.value++
+  await loadReviews()
 }
 
 async function handleBuy() {
   if (!userStore.isLoggedIn) { router.push({ name: 'Login', query: { redirect: route.fullPath } }); return }
   if (!course.value) return
   if (course.value.isFree) {
-    await createOrder({ courseId: course.value.id, courseTitle: course.value.title, courseCover: course.value.cover, teacherName: course.value.teacherName, originalPrice: 0 })
+    await createOrder({ courseId: course.value.id, courseTitle: course.value.title, courseCover: course.value.cover, teacherName: course.value.teacherName, originalPrice: 0, username: userStore.userInfo?.username })
     ElMessage.success('已加入学习')
     hasBought.value = true
     return
   }
   ElMessageBox.confirm(`确定购买「${course.value.title}」？`, '购买确认').then(async () => {
-    await createOrder({ courseId: course.value!.id, courseTitle: course.value!.title, courseCover: course.value!.cover, teacherName: course.value!.teacherName, originalPrice: course.value!.price })
+    await createOrder({ courseId: course.value!.id, courseTitle: course.value!.title, courseCover: course.value!.cover, teacherName: course.value!.teacherName, originalPrice: course.value!.price, username: userStore.userInfo?.username })
     ElMessage.success('订单已创建')
     router.push('/user/orders')
   }).catch(() => {})
+}
+
+function goStudy() {
+  if (!course.value) return
+  router.push(`/study/${course.value.id}`)
+}
+
+async function toggleFavorite() {
+  if (!userStore.isLoggedIn) { router.push({ name: 'Login', query: { redirect: route.fullPath } }); return }
+  if (!course.value) return
+  try {
+    if (isFavorite.value) {
+      await removeFavorite(course.value.id)
+      isFavorite.value = false
+      ElMessage.success('已取消收藏')
+    } else {
+      await addFavorite(course.value.id)
+      isFavorite.value = true
+      ElMessage.success('收藏成功')
+    }
+  } catch (e) { console.error(e) }
+}
+
+async function submitReview() {
+  if (!course.value) return
+  if (reviewForm.score === 0) {
+    ElMessage.warning('请选择评分')
+    return
+  }
+  submittingReview.value = true
+  try {
+    await addReview({
+      courseId: course.value.id,
+      score: reviewForm.score,
+      content: reviewForm.content,
+      isAnonymous: reviewForm.isAnonymous
+    })
+    ElMessage.success('评价成功')
+    hasReviewed.value = true
+    reviewPage.value = 1
+    await loadReviews()
+    // 重新加载课程信息以更新评分
+    const res = await getCourseDetail(course.value.id)
+    course.value = res.data
+  } catch (e) { console.error(e) }
+  finally { submittingReview.value = false }
+}
+
+function handleLessonClick(lesson: LessonInfo) {
+  if (hasBought.value || lesson.isFree) {
+    router.push(`/study/${course.value?.id}?lesson=${lesson.id}`)
+  } else {
+    ElMessage.info('购买课程后即可学习')
+  }
 }
 
 onMounted(load)
@@ -120,8 +311,10 @@ onMounted(load)
   .info { color: #fff; flex: 1; }
   h1 { font-size: 20px; margin-bottom: 6px; }
   .sub { font-size: 12px; opacity: 0.8; margin-bottom: 12px; }
-  .meta { display: flex; gap: 16px; font-size: 11px; opacity: 0.7; margin-bottom: 20px; }
-  .action { display: flex; align-items: center; gap: 20px; }
+  .meta { display: flex; align-items: center; gap: 16px; font-size: 11px; opacity: 0.7; margin-bottom: 20px;
+    :deep(.el-rate) { height: auto; }
+  }
+  .action { display: flex; align-items: center; gap: 12px; }
   .price { font-size: 24px; font-weight: 700; color: #f87171; del { font-size: 12px; color: #999; margin-left: 6px; } }
 }
 
@@ -133,7 +326,49 @@ onMounted(load)
 .intro { h3 { font-size: 14px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #eee; } p { font-size: 12px; color: #666; line-height: 1.6; } }
 
 .ch-title { display: flex; justify-content: space-between; width: 100%; padding-right: 12px; font-size: 12px; .cnt { font-size: 10px; color: #999; } }
-.lesson { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #f5f5f5; font-size: 11px; &:last-child { border: none; } .name { flex: 1; } .dur { color: #999; } }
+.lesson { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #f5f5f5; font-size: 11px; cursor: pointer; transition: background 0.2s;
+  &:hover { background: #f8fafc; }
+  &:last-child { border: none; }
+  .name { flex: 1; }
+  .dur { color: #999; }
+  .finished { color: #10b981; }
+}
 
 .teacher-card { background: #fff; border-radius: 10px; padding: 16px; text-align: center; h4 { font-size: 12px; margin-bottom: 12px; } .name { margin-top: 8px; font-size: 13px; font-weight: 500; } }
+
+// 评价样式
+.reviews-section {
+  .review-stats {
+    padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 16px;
+    .avg-score { display: flex; align-items: center; gap: 12px;
+      .num { font-size: 32px; font-weight: 700; color: var(--primary-color); }
+      .total { font-size: 11px; color: var(--text-muted); }
+    }
+  }
+
+  .add-review {
+    padding: 16px; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 16px;
+    &.tip { padding: 0; border: none; }
+    h4 { font-size: 13px; margin-bottom: 12px; }
+    .review-form {
+      .row { margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
+        &:last-child { justify-content: space-between; }
+        .label { font-size: 12px; color: var(--text-secondary); }
+      }
+    }
+  }
+
+  .review-list {
+    .review-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f0f0f0;
+      &:last-child { border: none; }
+    }
+    .review-body { flex: 1; }
+    .review-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+      .name { font-size: 12px; font-weight: 500; }
+    }
+    .review-content { font-size: 12px; color: #666; line-height: 1.6; margin-bottom: 6px; }
+    .review-time { font-size: 10px; color: var(--text-muted); }
+    .load-more { text-align: center; padding: 10px 0; }
+  }
+}
 </style>

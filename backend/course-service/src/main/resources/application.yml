@@ -5,6 +5,10 @@ spring:
   application:
     name: course-service
   
+  jackson:
+    generator:
+      write-numbers-as-strings: true
+
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -51,4 +55,8 @@ knife4j:
 logging:
   level:
     com.taotao.education: DEBUG
+
+file:
+  upload-path: uploads
+  access-url: http://localhost:8082/uploads
 

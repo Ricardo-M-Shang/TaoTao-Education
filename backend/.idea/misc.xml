@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="Gantt">
+    <property name="project-savefile" value="C:\Users\shang\Desktop\实习项目\TaoTao-Education\backend\.idea\backend.sptl" />
+    <property name="last-save-path" value="C:\Program Files\JetBrains\IntelliJ IDEA 2024.1.2\jbr\bin" />
+    <property name="work-weekends" value="false" />
+    <property name="work-format" value="#,##" />
+    <property name="date-format" value="dd-MMM-yyyy" />
+    <property name="gantt-texture" value="Solid" />
+    <property name="gantt-texture-bg" value="-8355712" />
+    <property name="gantt-texture-fg" value="-16777216" />
+    <property name="gantt-group-color" value="-16777096" />
+    <property name="gantt-bar-style" value="linked" />
+    <property name="gantt-header-style" value="week-header" />
+  </component>
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_22" default="true" project-jdk-name="22" project-jdk-type="JavaSDK" />
+</project>

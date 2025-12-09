@@ -6,6 +6,7 @@ export interface CourseListParams {
   categoryId?: number
   type?: number
   isFree?: number
+  status?: number
   orderBy?: string
   pageNum: number
   pageSize: number
@@ -15,7 +16,7 @@ export interface CourseListParams {
  * 课程列表项
  */
 export interface CourseListItem {
-  id: number
+  id: number | string
   title: string
   subtitle: string
   cover: string
@@ -29,6 +30,7 @@ export interface CourseListItem {
   studyCount: number
   score: number
   createTime: string
+  status?: number
 }
 
 /**

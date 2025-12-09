@@ -22,6 +22,9 @@ public class CourseQueryDTO {
     @Schema(description = "是否免费 0-收费 1-免费")
     private Integer isFree;
 
+    @Schema(description = "课程状态 0-草稿 2-已发布 3-已下架（讲师端使用）")
+    private Integer status;
+
     @Schema(description = "排序方式 popular-最热 newest-最新 price-价格")
     private String orderBy;
 

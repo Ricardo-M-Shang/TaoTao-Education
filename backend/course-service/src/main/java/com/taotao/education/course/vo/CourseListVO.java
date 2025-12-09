@@ -54,5 +54,8 @@ public class CourseListVO {
 
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "课程状态 0-草稿 2-已发布 3-已下架")
+    private Integer status;
 }
 

@@ -21,8 +21,14 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="user">个人中心</el-dropdown-item>
-                  <el-dropdown-item command="orders">我的订单</el-dropdown-item>
-                  <el-dropdown-item command="courses">我的课程</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="orders">我的订单</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="courses">我的课程</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="favorites">我的收藏</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="statistics">学习统计</el-dropdown-item>
+                  <el-dropdown-item v-if="isTeacher" divided disabled>讲师功能</el-dropdown-item>
+                  <el-dropdown-item v-if="isTeacher" command="t-courses">讲师课程</el-dropdown-item>
+                  <el-dropdown-item v-if="isTeacher" command="t-stats">收益统计</el-dropdown-item>
+                  <el-dropdown-item v-if="isTeacher" command="t-profile">资料设置</el-dropdown-item>
                   <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -56,6 +62,7 @@
 
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
+import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { ElMessageBox } from 'element-plus'
 
@@ -63,13 +70,23 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+const isTeacher = computed(() => userStore.userInfo?.role === 2)
+const isStudent = computed(() => userStore.userInfo?.role === 1)
 
 function handleCommand(cmd: string) {
   if (cmd === 'logout') {
     ElMessageBox.confirm('确定退出登录？', '提示').then(() => { userStore.logoutAction(); router.push('/') }).catch(() => {})
-  } else if (cmd === 'user') router.push('/user')
+  } else if (cmd === 'user') {
+    if (isTeacher.value) router.push('/teacher')
+    else router.push('/user')
+  }
   else if (cmd === 'orders') router.push('/user/orders')
   else if (cmd === 'courses') router.push('/user/courses')
+  else if (cmd === 'favorites') router.push('/user/favorites')
+  else if (cmd === 'statistics') router.push('/user/statistics')
+  else if (cmd === 't-courses') router.push('/teacher/courses')
+  else if (cmd === 't-stats') router.push('/teacher/stats')
+  else if (cmd === 't-profile') router.push('/teacher/profile')
 }
 </script>
 

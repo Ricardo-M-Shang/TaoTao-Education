@@ -26,6 +26,12 @@ public class OrderCreateDTO {
     @Schema(description = "讲师名称")
     private String teacherName;
 
+    @Schema(description = "讲师ID")
+    private Long teacherId;
+
+    @Schema(description = "下单用户名")
+    private String username;
+
     @Schema(description = "原价")
     private BigDecimal originalPrice;
 }

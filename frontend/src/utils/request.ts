@@ -31,8 +31,16 @@ service.interceptors.response.use(
   (response: AxiosResponse) => {
     const res = response.data
     
-    // 请求成功
-    if (res.code === 200) {
+    const code = res.code
+    // 请求成功（兼容字符串/未包装/0的情况）
+    if (
+      code === 200 ||
+      code === '200' ||
+      code === 0 ||
+      code === '0' ||
+      code === undefined ||
+      code === null
+    ) {
       return res
     }
     

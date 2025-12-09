@@ -40,5 +40,10 @@ public interface OrderService extends IService<Order> {
      * 检查用户是否购买过课程
      */
     boolean checkUserBuyCourse(Long userId, Long courseId);
+
+    /**
+     * 讲师收益统计
+     */
+    com.taotao.education.order.vo.TeacherStatsVO getTeacherStats(Long teacherId);
 }
 

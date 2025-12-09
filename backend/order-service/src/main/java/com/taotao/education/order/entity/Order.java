@@ -17,6 +17,11 @@ import java.time.LocalDateTime;
 public class Order extends BaseEntity {
 
     /**
+     * 讲师ID
+     */
+    private Long teacherId;
+
+    /**
      * 订单号
      */
     private String orderNo;
@@ -30,6 +35,7 @@ public class Order extends BaseEntity {
      * 用户名
      */
     private String username;
+
 
     /**
      * 课程ID

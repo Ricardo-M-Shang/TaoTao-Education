@@ -57,7 +57,7 @@ export function payOrder(data: { orderNo: string; payType: number }): Promise<Ap
 /**
  * 检查是否已购买课程
  */
-export function checkBuyCourse(courseId: number): Promise<ApiResponse<boolean>> {
+export function checkBuyCourse(courseId: number | string): Promise<ApiResponse<boolean>> {
   return request({
     url: `/order/check/${courseId}`,
     method: 'get'

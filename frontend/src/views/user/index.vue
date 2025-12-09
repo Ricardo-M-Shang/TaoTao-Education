@@ -7,7 +7,46 @@
           <h2>{{ userStore.userInfo?.nickname || '用户' }}</h2>
           <p>{{ userStore.userInfo?.signature || '这个人很懒，什么都没写~' }}</p>
         </div>
+        <div class="header-actions">
+          <el-button size="small" round @click="$router.push('/user/statistics')">
+            <el-icon><DataAnalysis /></el-icon>
+            学习统计
+          </el-button>
+        </div>
       </div>
+
+      <!-- 学习概览卡片 -->
+      <div class="stat-overview">
+        <div class="stat-item" @click="$router.push('/user/courses')">
+          <div class="stat-icon courses"><el-icon><Reading /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.totalCourses }}</span>
+            <span class="stat-label">我的课程</span>
+          </div>
+        </div>
+        <div class="stat-item" @click="$router.push('/user/statistics')">
+          <div class="stat-icon study-time"><el-icon><Timer /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">{{ formatStudyTime(stats.totalStudyTime) }}</span>
+            <span class="stat-label">学习时长</span>
+          </div>
+        </div>
+        <div class="stat-item" @click="$router.push('/user/favorites')">
+          <div class="stat-icon favorites"><el-icon><Star /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.favorites }}</span>
+            <span class="stat-label">我的收藏</span>
+          </div>
+        </div>
+        <div class="stat-item" @click="$router.push('/user/orders')">
+          <div class="stat-icon orders"><el-icon><Tickets /></el-icon></div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.orders }}</span>
+            <span class="stat-label">我的订单</span>
+          </div>
+        </div>
+      </div>
+
       <div class="user-body">
         <el-menu :default-active="activeMenu" class="menu" @select="handleMenuSelect">
           <el-menu-item index="profile">个人资料</el-menu-item>
@@ -100,16 +139,49 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, FormInstance, FormRules, UploadRawFile } from 'element-plus'
-import { Camera } from '@element-plus/icons-vue'
+import { Camera, DataAnalysis, Reading, Timer, Star, Tickets } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { updateUserInfo, changePassword } from '@/api/user'
 import { uploadAvatar } from '@/api/file'
+import { getStudyStatistics } from '@/api/study'
+import { getFavoriteList } from '@/api/favorite'
+import { getOrderList } from '@/api/order'
 
 const userStore = useUserStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 const activeMenu = ref('profile')
 const pwdFormRef = ref<FormInstance>()
 const saving = ref(false)
+
+// 统计数据
+const stats = ref({
+  totalCourses: 0,
+  totalStudyTime: 0,
+  favorites: 0,
+  orders: 0
+})
+
+function formatStudyTime(minutes: number): string {
+  if (minutes < 60) return `${minutes}分钟`
+  const hours = Math.floor(minutes / 60)
+  return `${hours}小时`
+}
+
+async function loadStats() {
+  try {
+    const [studyRes, favRes, orderRes] = await Promise.all([
+      getStudyStatistics(),
+      getFavoriteList(1, 1),
+      getOrderList({ pageNum: 1, pageSize: 1 })
+    ])
+    stats.value.totalCourses = studyRes.data.totalCourses
+    stats.value.totalStudyTime = studyRes.data.totalStudyTime
+    stats.value.favorites = favRes.data.total
+    stats.value.orders = orderRes.data.total
+  } catch (e) {
+    console.error('加载统计数据失败', e)
+  }
+}
 
 // 省市数据
 const regionData: Record<string, string[]> = {
@@ -232,6 +304,7 @@ onMounted(() => {
     profileForm.city = userStore.userInfo.city || ''
     profileForm.signature = userStore.userInfo.signature || ''
   }
+  loadStats()
 })
 </script>
 
@@ -241,8 +314,71 @@ onMounted(() => {
 
 .user-header {
   background: #fff; padding: 20px; border-radius: 10px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+  
+  .info { flex: 1; }
   h2 { font-size: 16px; margin-bottom: 4px; }
   p { font-size: 11px; color: var(--text-muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  
+  .header-actions {
+    .el-button {
+      .el-icon { margin-right: 4px; }
+    }
+  }
+}
+
+.stat-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+  
+  .stat-item {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #fff;
+      
+      &.courses { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+      &.study-time { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
+      &.favorites { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+      &.orders { background: linear-gradient(135deg, #10b981, #34d399); }
+    }
+    
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+      
+      .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+      
+      .stat-label {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+    }
+  }
 }
 
 .user-body { display: flex; gap: 16px; }

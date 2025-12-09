@@ -7,6 +7,7 @@ export interface CreateOrderParams {
   courseCover: string
   teacherName: string
   originalPrice: number
+  username?: string
 }
 
 /**

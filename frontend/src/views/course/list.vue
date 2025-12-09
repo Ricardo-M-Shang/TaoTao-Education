@@ -84,12 +84,27 @@ const query = reactive<CourseListParams>({
 })
 
 async function loadCategories() {
-  try { const res = await getCategoryTree(); categories.value = res.data.filter(c => c.level === 1) } catch (e) { console.error(e) }
+  try {
+    const res = await getCategoryTree()
+    categories.value = (res.data || [])
+      .map(c => ({ ...c, level: Number(c.level) }))
+      .filter(c => c.level === 1)
+  } catch (e) { console.error(e) }
 }
 
 async function load() {
   loading.value = true
-  try { const res = await getCourseList(query); courses.value = res.data.records; total.value = res.data.total } catch (e) { console.error(e) }
+  try {
+    const res = await getCourseList(query)
+    courses.value = (res.data.records || []).map((c) => ({
+      ...c,
+      id: String(c.id),
+      isFree: Number(c.isFree),
+      price: Number(c.price),
+      originalPrice: Number(c.originalPrice)
+    }))
+    total.value = res.data.total
+  } catch (e) { console.error(e) }
   finally { loading.value = false }
 }
 

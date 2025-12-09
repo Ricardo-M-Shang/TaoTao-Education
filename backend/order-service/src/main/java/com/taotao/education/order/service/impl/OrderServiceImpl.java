@@ -47,10 +47,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         Order order = new Order();
         order.setOrderNo(orderNo);
         order.setUserId(userId);
+        order.setTeacherId(createDTO.getTeacherId());
         order.setCourseId(createDTO.getCourseId());
         order.setCourseTitle(createDTO.getCourseTitle());
         order.setCourseCover(createDTO.getCourseCover());
         order.setTeacherName(createDTO.getTeacherName());
+        order.setUsername(createDTO.getUsername());
         order.setOriginalPrice(createDTO.getOriginalPrice());
         order.setDiscountAmount(BigDecimal.ZERO);
         order.setPayAmount(createDTO.getOriginalPrice());
@@ -162,6 +164,24 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         wrapper.eq(UserCourse::getUserId, userId)
                .eq(UserCourse::getCourseId, courseId);
         return userCourseMapper.selectCount(wrapper) > 0;
+    }
+
+    @Override
+    public com.taotao.education.order.vo.TeacherStatsVO getTeacherStats(Long teacherId) {
+        com.taotao.education.order.vo.TeacherStatsVO vo = new com.taotao.education.order.vo.TeacherStatsVO();
+        vo.setTotalIncome(baseMapper.sumPaidAmountByTeacher(teacherId));
+        vo.setTodayIncome(baseMapper.sumTodayIncomeByTeacher(teacherId));
+        vo.setMonthIncome(baseMapper.sumMonthIncomeByTeacher(teacherId));
+        vo.setPaidOrders(baseMapper.countPaidOrdersByTeacher(teacherId));
+
+        // 学员数按已支付订单的去重用户
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Order::getTeacherId, teacherId)
+               .eq(Order::getStatus, 1)
+               .select(Order::getUserId)
+               .groupBy(Order::getUserId);
+        vo.setStudentCount((int) this.count(wrapper));
+        return vo;
     }
 }
 

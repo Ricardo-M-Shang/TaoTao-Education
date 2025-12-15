@@ -40,5 +40,35 @@ public interface OrderService extends IService<Order> {
      * 检查用户是否购买过课程
      */
     boolean checkUserBuyCourse(Long userId, Long courseId);
+
+    /**
+     * 讲师收益统计
+     */
+    com.taotao.education.order.vo.TeacherStatsVO getTeacherStats(Long teacherId);
+
+    /**
+     * 机构订单列表
+     */
+    Page<OrderVO> getOrgOrders(Long orgId, Integer status, Long teacherId, Integer pageNum, Integer pageSize);
+
+    /**
+     * 机构收益统计
+     */
+    com.taotao.education.order.vo.OrgStatsVO getOrgStats(Long orgId);
+
+    /**
+     * 机构收入/订单趋势
+     */
+    java.util.List<com.taotao.education.order.vo.OrgTrendVO> getOrgTrend(Long orgId, Integer days);
+
+    /**
+     * 运营端订单/收入概览
+     */
+    com.taotao.education.order.vo.OpsOrderOverviewVO getOpsOverview();
+
+    /**
+     * 运营端收入/订单趋势
+     */
+    java.util.List<com.taotao.education.order.vo.OpsTrendVO> getOpsTrend(Integer days);
 }
 

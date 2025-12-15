@@ -14,13 +14,17 @@ import com.taotao.education.user.entity.User;
 import com.taotao.education.user.mapper.UserMapper;
 import com.taotao.education.user.service.UserService;
 import com.taotao.education.user.vo.LoginVO;
+import com.taotao.education.user.vo.OrgOptionVO;
 import com.taotao.education.user.vo.UserVO;
+import com.taotao.education.user.vo.OpsUserOverviewVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -176,6 +180,46 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public void logout(Long userId) {
         String key = RedisConstants.USER_TOKEN_PREFIX + userId;
         redisTemplate.delete(key);
+    }
+
+    @Override
+    public List<OrgOptionVO> listOrgs() {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getRole, 4)
+               .eq(User::getStatus, 1)
+               .eq(User::getDeleted, 0);
+        List<User> users = this.list(wrapper);
+        return users.stream().map(u -> {
+            OrgOptionVO vo = new OrgOptionVO();
+            vo.setId(u.getId());
+            vo.setName(u.getNickname() != null ? u.getNickname() : u.getUsername());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public OpsUserOverviewVO getOpsOverview() {
+        OpsUserOverviewVO vo = new OpsUserOverviewVO();
+        LambdaQueryWrapper<User> baseWrapper = new LambdaQueryWrapper<>();
+        baseWrapper.eq(User::getDeleted, 0);
+        vo.setTotal(this.count(baseWrapper));
+
+        LambdaQueryWrapper<User> studentWrapper = new LambdaQueryWrapper<>();
+        studentWrapper.eq(User::getDeleted, 0).eq(User::getRole, 1);
+        vo.setStudents(this.count(studentWrapper));
+
+        LambdaQueryWrapper<User> teacherWrapper = new LambdaQueryWrapper<>();
+        teacherWrapper.eq(User::getDeleted, 0).eq(User::getRole, 2);
+        vo.setTeachers(this.count(teacherWrapper));
+
+        LambdaQueryWrapper<User> orgWrapper = new LambdaQueryWrapper<>();
+        orgWrapper.eq(User::getDeleted, 0).eq(User::getRole, 4);
+        vo.setOrgs(this.count(orgWrapper));
+
+        LambdaQueryWrapper<User> opsWrapper = new LambdaQueryWrapper<>();
+        opsWrapper.eq(User::getDeleted, 0).eq(User::getRole, 5);
+        vo.setOps(this.count(opsWrapper));
+        return vo;
     }
 }
 

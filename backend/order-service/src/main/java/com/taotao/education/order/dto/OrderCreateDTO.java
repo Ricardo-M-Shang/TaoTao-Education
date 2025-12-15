@@ -26,7 +26,22 @@ public class OrderCreateDTO {
     @Schema(description = "讲师名称")
     private String teacherName;
 
+    @Schema(description = "讲师ID")
+    private Long teacherId;
+
+    @Schema(description = "机构ID")
+    private Long orgId;
+
+    @Schema(description = "机构名称")
+    private String orgName;
+
+    @Schema(description = "下单用户名")
+    private String username;
+
     @Schema(description = "原价")
     private BigDecimal originalPrice;
+
+    @Schema(description = "使用的优惠券ID，可为空")
+    private Long couponId;
 }
 

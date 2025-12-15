@@ -38,6 +38,12 @@ public class CourseDetailVO {
     @Schema(description = "讲师名称")
     private String teacherName;
 
+    @Schema(description = "机构ID")
+    private Long orgId;
+
+    @Schema(description = "机构名称")
+    private String orgName;
+
     @Schema(description = "分类ID")
     private Long categoryId;
 
@@ -67,6 +73,15 @@ public class CourseDetailVO {
 
     @Schema(description = "总时长（秒）")
     private Long totalDuration;
+
+    @Schema(description = "课程状态 0-草稿 1-待审核 2-已发布 3-已下架")
+    private Integer status;
+
+    @Schema(description = "审核备注")
+    private String auditRemark;
+
+    @Schema(description = "审核时间")
+    private LocalDateTime auditTime;
 
     @Schema(description = "创建时间")
     private LocalDateTime createTime;

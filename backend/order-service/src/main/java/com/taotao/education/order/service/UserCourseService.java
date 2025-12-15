@@ -20,5 +20,10 @@ public interface UserCourseService extends IService<UserCourse> {
      * 更新学习进度
      */
     void updateProgress(Long userId, Long courseId, Integer progress);
+
+    /**
+     * 获取讲师课程的学员列表
+     */
+    java.util.List<com.taotao.education.order.vo.TeacherStudentVO> listStudentsByCourse(Long teacherId, Long courseId);
 }
 

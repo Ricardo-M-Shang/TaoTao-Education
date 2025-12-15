@@ -1,5 +1,5 @@
 import { request, ApiResponse } from '@/utils/request'
-import type { LoginParams, RegisterParams, LoginResult, UserInfo } from '@/types/user'
+import type { LoginParams, RegisterParams, LoginResult, UserInfo, OrgOption } from '@/types/user'
 
 /**
  * 用户登录
@@ -70,6 +70,16 @@ export function logout(): Promise<ApiResponse<void>> {
   return request({
     url: '/user/logout',
     method: 'post'
+  })
+}
+
+/**
+ * 获取机构下拉列表
+ */
+export function getOrgOptions(): Promise<ApiResponse<OrgOption[]>> {
+  return request({
+    url: '/user/orgs',
+    method: 'get'
   })
 }
 

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 课程实体类
@@ -51,6 +52,16 @@ public class Course extends BaseEntity {
     private String teacherName;
 
     /**
+     * 机构ID
+     */
+    private Long orgId;
+
+    /**
+     * 机构名称
+     */
+    private String orgName;
+
+    /**
      * 分类ID
      */
     private Long categoryId;
@@ -84,6 +95,26 @@ public class Course extends BaseEntity {
      * 课程状态 0-草稿 1-待审核 2-已发布 3-已下架
      */
     private Integer status;
+
+    /**
+     * 审核备注
+     */
+    private String auditRemark;
+
+    /**
+     * 审核时间
+     */
+    private LocalDateTime auditTime;
+
+    /**
+     * 审核人ID
+     */
+    private Long auditorId;
+
+    /**
+     * 审核人名称
+     */
+    private String auditorName;
 
     /**
      * 课时数

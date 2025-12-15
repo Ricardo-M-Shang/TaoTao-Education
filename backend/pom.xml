@@ -17,6 +17,8 @@
         <module>user-service</module>
         <module>course-service</module>
         <module>order-service</module>
+        <module>learning-service</module>
+        <module>chat-service</module>
     </modules>
 
     <parent>

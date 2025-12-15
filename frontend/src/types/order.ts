@@ -2,11 +2,16 @@
  * 创建订单参数
  */
 export interface CreateOrderParams {
-  courseId: number
+  courseId: number | string
   courseTitle: string
   courseCover: string
   teacherName: string
+  teacherId?: number | string
+  orgId?: number | string
+  orgName?: string
   originalPrice: number
+  couponId?: number | string
+  username?: string
 }
 
 /**
@@ -20,9 +25,13 @@ export interface OrderInfo {
   courseTitle: string
   courseCover: string
   teacherName: string
+  orgId?: number
+  orgName?: string
   originalPrice: number
   discountAmount: number
   payAmount: number
+  orgIncome?: number
+  platformIncome?: number
   payType: number
   status: number
   payTime: string

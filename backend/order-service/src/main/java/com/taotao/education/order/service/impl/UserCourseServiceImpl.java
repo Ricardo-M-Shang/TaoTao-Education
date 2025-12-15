@@ -74,5 +74,10 @@ public class UserCourseServiceImpl extends ServiceImpl<UserCourseMapper, UserCou
             this.updateById(userCourse);
         }
     }
+
+    @Override
+    public List<com.taotao.education.order.vo.TeacherStudentVO> listStudentsByCourse(Long teacherId, Long courseId) {
+        return baseMapper.listStudentsByCourse(teacherId, courseId);
+    }
 }
 

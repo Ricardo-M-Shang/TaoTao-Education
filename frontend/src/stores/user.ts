@@ -35,6 +35,10 @@ export const useUserStore = defineStore('user', () => {
       userInfo.value = res.data
     } catch (error) {
       console.error('获取用户信息失败', error)
+      // token失效时清理本地
+      token.value = ''
+      userInfo.value = null
+      localStorage.removeItem('token')
     }
   }
 

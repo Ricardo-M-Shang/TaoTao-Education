@@ -12,6 +12,10 @@ import com.taotao.education.course.entity.Category;
 import com.taotao.education.course.entity.Chapter;
 import com.taotao.education.course.entity.Course;
 import com.taotao.education.course.entity.Lesson;
+import com.taotao.education.course.dto.ChapterCreateDTO;
+import com.taotao.education.course.dto.ChapterUpdateDTO;
+import com.taotao.education.course.dto.LessonCreateDTO;
+import com.taotao.education.course.dto.LessonUpdateDTO;
 import com.taotao.education.course.mapper.CategoryMapper;
 import com.taotao.education.course.mapper.ChapterMapper;
 import com.taotao.education.course.mapper.CourseMapper;
@@ -26,6 +30,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,16 +51,20 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
 
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
         
-        // 关键词搜索
+        // 关键词搜索（标题/描述）
         if (StringUtils.hasText(queryDTO.getKeyword())) {
-            wrapper.like(Course::getTitle, queryDTO.getKeyword())
-                   .or()
-                   .like(Course::getDescription, queryDTO.getKeyword());
+            wrapper.and(w -> w.like(Course::getTitle, queryDTO.getKeyword())
+                    .or()
+                    .like(Course::getDescription, queryDTO.getKeyword()));
         }
         
         // 分类筛选
         if (queryDTO.getCategoryId() != null) {
             wrapper.eq(Course::getCategoryId, queryDTO.getCategoryId());
+        }
+
+        if (queryDTO.getTeacherId() != null) {
+            wrapper.eq(Course::getTeacherId, queryDTO.getTeacherId());
         }
         
         // 类型筛选
@@ -67,6 +76,13 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         if (queryDTO.getIsFree() != null) {
             wrapper.eq(Course::getIsFree, queryDTO.getIsFree());
         }
+
+        if (queryDTO.getMinPrice() != null) {
+            wrapper.ge(Course::getPrice, queryDTO.getMinPrice());
+        }
+        if (queryDTO.getMaxPrice() != null) {
+            wrapper.le(Course::getPrice, queryDTO.getMaxPrice());
+        }
         
         // 只查询已发布的课程
         wrapper.eq(Course::getStatus, 2);
@@ -76,8 +92,10 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             wrapper.orderByDesc(Course::getStudyCount);
         } else if ("newest".equals(queryDTO.getOrderBy())) {
             wrapper.orderByDesc(Course::getCreateTime);
-        } else if ("price".equals(queryDTO.getOrderBy())) {
+        } else if ("priceAsc".equals(queryDTO.getOrderBy())) {
             wrapper.orderByAsc(Course::getPrice);
+        } else if ("priceDesc".equals(queryDTO.getOrderBy())) {
+            wrapper.orderByDesc(Course::getPrice);
         } else {
             wrapper.orderByDesc(Course::getSort);
         }
@@ -139,6 +157,8 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         Course course = new Course();
         BeanUtils.copyProperties(createDTO, course);
         course.setTeacherId(teacherId);
+        course.setOrgId(createDTO.getOrgId());
+        course.setOrgName(createDTO.getOrgName());
         course.setStatus(0); // 草稿状态
         course.setStudyCount(0);
         course.setLessonCount(0);
@@ -163,6 +183,12 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         }
 
         BeanUtils.copyProperties(updateDTO, course);
+        if (updateDTO.getOrgId() != null) {
+            course.setOrgId(updateDTO.getOrgId());
+        }
+        if (updateDTO.getOrgName() != null) {
+            course.setOrgName(updateDTO.getOrgName());
+        }
 
         // 更新分类名称
         if (updateDTO.getCategoryId() != null) {
@@ -182,7 +208,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
         }
 
-        course.setStatus(2); // 已发布
+        course.setStatus(2); // 直接发布，仅内部/机构使用
         this.updateById(course);
     }
 
@@ -197,9 +223,297 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         this.updateById(course);
     }
 
+    @Override
+    public Page<CourseListVO> pageTeacherCourses(Long teacherId, CourseQueryDTO queryDTO) {
+        Page<Course> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
+
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Course::getTeacherId, teacherId);
+
+        // 关键词搜索
+        if (StringUtils.hasText(queryDTO.getKeyword())) {
+            wrapper.like(Course::getTitle, queryDTO.getKeyword())
+                   .or()
+                   .like(Course::getDescription, queryDTO.getKeyword());
+        }
+
+        // 分类筛选
+        if (queryDTO.getCategoryId() != null) {
+            wrapper.eq(Course::getCategoryId, queryDTO.getCategoryId());
+        }
+
+        // 状态筛选（可选：0草稿 1待审核 2已发布 3已下架）
+        if (queryDTO.getStatus() != null) {
+            wrapper.eq(Course::getStatus, queryDTO.getStatus());
+        }
+
+        wrapper.orderByDesc(Course::getUpdateTime);
+
+        Page<Course> result = this.page(page, wrapper);
+        Page<CourseListVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+        List<CourseListVO> voList = result.getRecords().stream()
+                .map(this::convertToListVO)
+                .collect(Collectors.toList());
+        voPage.setRecords(voList);
+        return voPage;
+    }
+
+    @Override
+    public void updateCourseStatus(Long teacherId, Long courseId, Integer status) {
+        Course course = this.getById(courseId);
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        // 讲师：草稿/已下架 -> 待审核(1)，已发布(2)->下架(3)
+        if (status == 1) {
+            if (course.getStatus() != null && (course.getStatus() == 1 || course.getStatus() == 2)) {
+                throw new BusinessException("课程已提交或已发布，无需重复提交");
+            }
+            course.setStatus(1);
+            course.setAuditRemark(null);
+            course.setAuditTime(null);
+            course.setAuditorId(null);
+            course.setAuditorName(null);
+        } else if (status == 2) {
+            // 直接发布仅用于特殊场景
+            if (course.getStatus() != null && course.getStatus() == 2) {
+                throw new BusinessException("课程已是发布状态");
+            }
+            course.setStatus(2);
+        } else if (status == 3) {
+            if (course.getStatus() == null || course.getStatus() != 2) {
+                throw new BusinessException("仅已发布课程可下架");
+            }
+            if (course.getOrgId() != null) {
+                // 机构课程需由机构进行下架，讲师不可直接下架
+                throw new BusinessException("机构课程需由所属机构审核/下架");
+            }
+            course.setStatus(3);
+        } else {
+            throw new BusinessException("不支持的课程状态变更");
+        }
+        this.updateById(course);
+    }
+
+    @Override
+    public Page<CourseListVO> pageOrgCourses(Long orgId, CourseQueryDTO queryDTO) {
+        Page<Course> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        if (orgId != null) {
+            wrapper.eq(Course::getOrgId, orgId);
+        }
+        if (StringUtils.hasText(queryDTO.getKeyword())) {
+            wrapper.like(Course::getTitle, queryDTO.getKeyword())
+                    .or()
+                    .like(Course::getDescription, queryDTO.getKeyword());
+        }
+        if (queryDTO.getCategoryId() != null) {
+            wrapper.eq(Course::getCategoryId, queryDTO.getCategoryId());
+        }
+        if (queryDTO.getStatus() != null) {
+            wrapper.eq(Course::getStatus, queryDTO.getStatus());
+        } else {
+            wrapper.eq(Course::getStatus, 1); // 默认待审核
+        }
+        wrapper.orderByDesc(Course::getUpdateTime);
+        Page<Course> result = this.page(page, wrapper);
+        Page<CourseListVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+        List<CourseListVO> voList = result.getRecords().stream().map(this::convertToListVO).collect(Collectors.toList());
+        voPage.setRecords(voList);
+        return voPage;
+    }
+
+    @Override
+    public void approveCourse(Long orgId, Long auditorId, String auditorName, Long courseId, String remark) {
+        Course course = this.getById(courseId);
+        if (course == null) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        if (course.getOrgId() != null && !course.getOrgId().equals(orgId)) {
+            throw new BusinessException("无权操作其它机构的课程");
+        }
+        if (course.getStatus() != null && course.getStatus() == 2) {
+            throw new BusinessException("课程已发布，无需重复审核");
+        }
+        if (course.getStatus() != null && course.getStatus() == 3) {
+            throw new BusinessException("课程已下架，无法审核");
+        }
+        course.setStatus(2);
+        course.setOrgId(orgId);
+        course.setAuditorId(auditorId);
+        course.setAuditorName(auditorName);
+        course.setAuditRemark(remark);
+        course.setAuditTime(LocalDateTime.now());
+        this.updateById(course);
+    }
+
+    @Override
+    public void rejectCourse(Long orgId, Long auditorId, String auditorName, Long courseId, String remark) {
+        Course course = this.getById(courseId);
+        if (course == null) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        if (course.getOrgId() != null && !course.getOrgId().equals(orgId)) {
+            throw new BusinessException("无权操作其它机构的课程");
+        }
+        if (course.getStatus() != null && course.getStatus() == 2) {
+            throw new BusinessException("已发布课程不可拒绝");
+        }
+        course.setStatus(0); // 退回草稿
+        course.setOrgId(orgId);
+        course.setAuditorId(auditorId);
+        course.setAuditorName(auditorName);
+        course.setAuditRemark(remark);
+        course.setAuditTime(LocalDateTime.now());
+        this.updateById(course);
+    }
+
+    public void offlineCourseByOrg(Long orgId, Long courseId) {
+        Course course = this.getById(courseId);
+        if (course == null) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        if (course.getOrgId() == null || !course.getOrgId().equals(orgId)) {
+            throw new BusinessException("无权下架其它机构的课程");
+        }
+        if (course.getStatus() == null || course.getStatus() != 2) {
+            throw new BusinessException("仅已发布课程可下架");
+        }
+        course.setStatus(3);
+        this.updateById(course);
+    }
+
+    @Override
+    public List<com.taotao.education.course.vo.TeacherOptionVO> listOrgTeachers(Long orgId) {
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Course::getOrgId, orgId)
+                .isNotNull(Course::getTeacherId)
+                .select(Course::getTeacherId, Course::getTeacherName)
+                .groupBy(Course::getTeacherId, Course::getTeacherName);
+        List<Course> list = this.list(wrapper);
+        return list.stream().map(c -> {
+            com.taotao.education.course.vo.TeacherOptionVO vo = new com.taotao.education.course.vo.TeacherOptionVO();
+            vo.setId(c.getTeacherId());
+            vo.setName(c.getTeacherName());
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public com.taotao.education.course.vo.OpsCourseOverviewVO getOpsOverview() {
+        com.taotao.education.course.vo.OpsCourseOverviewVO vo = new com.taotao.education.course.vo.OpsCourseOverviewVO();
+        vo.setTotal(this.count());
+
+        LambdaQueryWrapper<Course> pendingWrapper = new LambdaQueryWrapper<>();
+        pendingWrapper.eq(Course::getStatus, 1);
+        vo.setPending(this.count(pendingWrapper));
+
+        LambdaQueryWrapper<Course> publishWrapper = new LambdaQueryWrapper<>();
+        publishWrapper.eq(Course::getStatus, 2);
+        vo.setPublished(this.count(publishWrapper));
+
+        LambdaQueryWrapper<Course> offlineWrapper = new LambdaQueryWrapper<>();
+        offlineWrapper.eq(Course::getStatus, 3);
+        vo.setOffline(this.count(offlineWrapper));
+        return vo;
+    }
+
+    @Override
+    public Long createChapter(Long teacherId, ChapterCreateDTO dto) {
+        Course course = this.getById(dto.getCourseId());
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        Chapter chapter = new Chapter();
+        BeanUtils.copyProperties(dto, chapter);
+        chapterMapper.insert(chapter);
+        return chapter.getId();
+    }
+
+    @Override
+    public void updateChapter(Long teacherId, Long chapterId, ChapterUpdateDTO dto) {
+        Chapter chapter = chapterMapper.selectById(chapterId);
+        if (chapter == null) throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        Course course = this.getById(chapter.getCourseId());
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        chapter.setTitle(dto.getTitle());
+        chapter.setSort(dto.getSort());
+        chapterMapper.updateById(chapter);
+    }
+
+    @Override
+    public void deleteChapter(Long teacherId, Long chapterId) {
+        Chapter chapter = chapterMapper.selectById(chapterId);
+        if (chapter == null) return;
+        Course course = this.getById(chapter.getCourseId());
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        // 删除章节下课时
+        LambdaQueryWrapper<Lesson> lw = new LambdaQueryWrapper<>();
+        lw.eq(Lesson::getChapterId, chapterId);
+        lessonMapper.delete(lw);
+        chapterMapper.deleteById(chapterId);
+    }
+
+    @Override
+    public Long createLesson(Long teacherId, LessonCreateDTO dto) {
+        Course course = this.getById(dto.getCourseId());
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        if (course.getType() != 1 && dto.getType() == 1) {
+            throw new BusinessException("当前课程非录播，无法创建视频课时");
+        }
+        Lesson lesson = new Lesson();
+        BeanUtils.copyProperties(dto, lesson);
+        lessonMapper.insert(lesson);
+        // 更新课时数
+        course.setLessonCount((course.getLessonCount() == null ? 0 : course.getLessonCount()) + 1);
+        this.updateById(course);
+        return lesson.getId();
+    }
+
+    @Override
+    public void updateLesson(Long teacherId, Long lessonId, LessonUpdateDTO dto) {
+        Lesson lesson = lessonMapper.selectById(lessonId);
+        if (lesson == null) throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        Course course = this.getById(lesson.getCourseId());
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        lesson.setTitle(dto.getTitle());
+        lesson.setVideoUrl(dto.getVideoUrl());
+        lesson.setDuration(dto.getDuration());
+        lesson.setIsFree(dto.getIsFree());
+        lesson.setSort(dto.getSort());
+        lesson.setType(dto.getType());
+        lessonMapper.updateById(lesson);
+    }
+
+    @Override
+    public void deleteLesson(Long teacherId, Long lessonId) {
+        Lesson lesson = lessonMapper.selectById(lessonId);
+        if (lesson == null) return;
+        Course course = this.getById(lesson.getCourseId());
+        if (course == null || !course.getTeacherId().equals(teacherId)) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        lessonMapper.deleteById(lessonId);
+        // 课时数更新
+        Long cnt = lessonMapper.selectCount(new LambdaQueryWrapper<Lesson>().eq(Lesson::getCourseId, course.getId()));
+        course.setLessonCount(cnt == null ? 0 : cnt.intValue());
+        this.updateById(course);
+    }
+
     private CourseListVO convertToListVO(Course course) {
         CourseListVO vo = new CourseListVO();
         BeanUtils.copyProperties(course, vo);
+        vo.setStatus(course.getStatus());
+        vo.setOrgName(course.getOrgName());
+        vo.setAuditRemark(course.getAuditRemark());
         return vo;
     }
 }

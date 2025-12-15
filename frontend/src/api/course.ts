@@ -15,7 +15,7 @@ export function getCourseList(params: CourseListParams): Promise<ApiResponse<Cou
 /**
  * 获取课程详情
  */
-export function getCourseDetail(courseId: number): Promise<ApiResponse<CourseDetail>> {
+export function getCourseDetail(courseId: number | string): Promise<ApiResponse<CourseDetail>> {
   return request({
     url: `/course/detail/${courseId}`,
     method: 'get'

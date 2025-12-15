@@ -24,6 +24,12 @@ public class CourseCreateDTO {
     @Schema(description = "课程封面")
     private String cover;
 
+    @Schema(description = "机构ID，可选。若提交给机构审核则填写")
+    private Long orgId;
+
+    @Schema(description = "机构名称，可选")
+    private String orgName;
+
     @Schema(description = "课程简介")
     private String description;
 

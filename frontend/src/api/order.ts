@@ -55,9 +55,20 @@ export function payOrder(data: { orderNo: string; payType: number }): Promise<Ap
 }
 
 /**
+ * 查询可用优惠券
+ */
+export function getAvailableCoupons(orderAmount: number): Promise<ApiResponse<any[]>> {
+  return request({
+    url: '/order/coupon/available',
+    method: 'get',
+    params: { orderAmount }
+  })
+}
+
+/**
  * 检查是否已购买课程
  */
-export function checkBuyCourse(courseId: number): Promise<ApiResponse<boolean>> {
+export function checkBuyCourse(courseId: number | string): Promise<ApiResponse<boolean>> {
   return request({
     url: `/order/check/${courseId}`,
     method: 'get'

@@ -17,6 +17,11 @@ import java.time.LocalDateTime;
 public class Order extends BaseEntity {
 
     /**
+     * 讲师ID
+     */
+    private Long teacherId;
+
+    /**
      * 订单号
      */
     private String orderNo;
@@ -30,6 +35,7 @@ public class Order extends BaseEntity {
      * 用户名
      */
     private String username;
+
 
     /**
      * 课程ID
@@ -52,9 +58,24 @@ public class Order extends BaseEntity {
     private String teacherName;
 
     /**
+     * 机构ID
+     */
+    private Long orgId;
+
+    /**
+     * 机构名称
+     */
+    private String orgName;
+
+    /**
      * 订单原价
      */
     private BigDecimal originalPrice;
+
+    /**
+     * 使用的优惠券ID
+     */
+    private Long couponId;
 
     /**
      * 优惠金额
@@ -65,6 +86,16 @@ public class Order extends BaseEntity {
      * 实付金额
      */
     private BigDecimal payAmount;
+
+    /**
+     * 机构分成
+     */
+    private BigDecimal orgIncome;
+
+    /**
+     * 平台分成
+     */
+    private BigDecimal platformIncome;
 
     /**
      * 支付方式 1-支付宝 2-微信

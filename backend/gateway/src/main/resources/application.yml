@@ -31,6 +31,36 @@ spring:
             - Path=/api/order/**
           filters:
             - StripPrefix=0
+        
+        # 学习服务路由
+        - id: learning-service
+          uri: http://localhost:9004
+          predicates:
+            - Path=/api/learning/**
+          filters:
+            - StripPrefix=0
+        
+        # 运营统计（订单/收入）路由
+        - id: ops-order-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/ops/**
+          filters:
+            - StripPrefix=0
+        
+        # 聊天服务路由
+        - id: chat-service
+          uri: http://localhost:9005
+          predicates:
+            - Path=/api/chat/**
+          filters:
+            - StripPrefix=0
+        
+        # 聊天服务WebSocket路由
+        - id: chat-websocket
+          uri: ws://localhost:9005
+          predicates:
+            - Path=/ws/chat/**
       
       # 全局超时配置
       httpclient:

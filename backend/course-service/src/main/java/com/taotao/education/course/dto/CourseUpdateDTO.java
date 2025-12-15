@@ -21,6 +21,12 @@ public class CourseUpdateDTO {
     @Schema(description = "课程封面")
     private String cover;
 
+    @Schema(description = "机构ID，可选")
+    private Long orgId;
+
+    @Schema(description = "机构名称，可选")
+    private String orgName;
+
     @Schema(description = "课程简介")
     private String description;
 

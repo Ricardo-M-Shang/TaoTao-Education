@@ -34,6 +34,8 @@ export interface StudyStatistics {
   finishedCourses: number     // 已完成课程数
   studyDays: number           // 学习天数
   weeklyStudyTime: number[]   // 最近7天学习时长
+  monthlyStudyTime?: number[] // 最近30天学习时长
+  progressBuckets?: number[]  // 进度分布
 }
 
 /**

@@ -7,6 +7,7 @@ import com.taotao.education.user.dto.RegisterDTO;
 import com.taotao.education.user.dto.UserUpdateDTO;
 import com.taotao.education.user.service.UserService;
 import com.taotao.education.user.vo.LoginVO;
+import com.taotao.education.user.vo.OrgOptionVO;
 import com.taotao.education.user.vo.UserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -67,6 +68,12 @@ public class UserController {
     public Result<Void> logout(@RequestHeader("X-User-Id") Long userId) {
         userService.logout(userId);
         return Result.success();
+    }
+
+    @Operation(summary = "获取机构下拉列表")
+    @GetMapping("/orgs")
+    public Result<java.util.List<OrgOptionVO>> listOrgs() {
+        return Result.success(userService.listOrgs());
     }
 }
 

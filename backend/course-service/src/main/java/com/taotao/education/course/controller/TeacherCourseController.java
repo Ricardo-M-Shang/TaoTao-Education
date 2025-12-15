@@ -49,7 +49,7 @@ public class TeacherCourseController {
     @PostMapping("/publish/{courseId}")
     public Result<Void> publish(@RequestHeader("X-User-Id") Long teacherId,
                                 @PathVariable Long courseId) {
-        courseService.updateCourseStatus(teacherId, courseId, 2);
+        courseService.updateCourseStatus(teacherId, courseId, 1);
         return Result.success();
     }
 

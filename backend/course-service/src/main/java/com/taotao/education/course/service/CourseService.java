@@ -40,7 +40,7 @@ public interface CourseService extends IService<Course> {
     void publishCourse(Long courseId);
 
     /**
-     * 下架课程
+     * 下架课程（讲师、机构均可调用）
      */
     void offlineCourse(Long courseId);
 
@@ -83,5 +83,35 @@ public interface CourseService extends IService<Course> {
      * 讲师：删除课时
      */
     void deleteLesson(Long teacherId, Long lessonId);
+
+    /**
+     * 机构：分页查询课程（可筛选待审核/已上架/下架）
+     */
+    Page<CourseListVO> pageOrgCourses(Long orgId, CourseQueryDTO queryDTO);
+
+    /**
+     * 机构：审核通过课程
+     */
+    void approveCourse(Long orgId, Long auditorId, String auditorName, Long courseId, String remark);
+
+    /**
+     * 机构：审核拒绝课程（退回草稿）
+     */
+    void rejectCourse(Long orgId, Long auditorId, String auditorName, Long courseId, String remark);
+
+    /**
+     * 机构：下架课程（需同机构）
+     */
+    void offlineCourseByOrg(Long orgId, Long courseId);
+
+    /**
+     * 机构下讲师列表
+     */
+    java.util.List<com.taotao.education.course.vo.TeacherOptionVO> listOrgTeachers(Long orgId);
+
+    /**
+     * 运营端课程概览
+     */
+    com.taotao.education.course.vo.OpsCourseOverviewVO getOpsOverview();
 }
 

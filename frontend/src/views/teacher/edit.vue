@@ -33,6 +33,11 @@
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="所属机构">
+          <el-select v-model="form.orgId" clearable placeholder="不选择则为个人课程">
+            <el-option v-for="o in orgOptions" :key="o.id" :label="o.name" :value="String(o.id)" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="类型" prop="type">
           <el-radio-group v-model="form.type">
             <el-radio :value="1">录播</el-radio>
@@ -160,6 +165,8 @@ import { getCategoryTree } from '@/api/course'
 import { createCourse, updateCourse, createChapter, updateChapter, deleteChapter, createLesson, updateLesson, deleteLesson } from '@/api/teacher'
 import type { CategoryTree, ChapterInfo, LessonInfo } from '@/types/course'
 import { uploadVideo, uploadCourseCover } from '@/api/file'
+import { getOrgOptions } from '@/api/user'
+import type { OrgOption } from '@/types/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -168,12 +175,15 @@ const loading = ref(false)
 const saving = ref(false)
 const formRef = ref<FormInstance>()
 const categories = ref<CategoryTree[]>([])
+const orgOptions = ref<OrgOption[]>([])
 const isEdit = computed(() => !!route.params.id)
 
 const form = reactive({
   title: '',
   subtitle: '',
   cover: '',
+  orgId: undefined as string | undefined,
+  orgName: '',
   description: '',
   content: '',
   categoryId: undefined as number | undefined,
@@ -222,6 +232,8 @@ async function loadDetail() {
       title: res.data.title,
       subtitle: res.data.subtitle,
       cover: res.data.cover,
+      orgId: res.data.orgId ? String(res.data.orgId) : undefined,
+      orgName: res.data.orgName || '',
       description: res.data.description,
       content: res.data.content,
       categoryId: res.data.categoryId,
@@ -245,11 +257,17 @@ async function handleSave() {
     if (!valid) return
     saving.value = true
     try {
+      const org = orgOptions.value.find(o => String(o.id) === form.orgId)
+      const payload = {
+        ...form,
+        orgId: form.orgId || undefined,
+        orgName: org?.name || form.orgName || undefined
+      }
       if (isEdit.value) {
-        await updateCourse(courseId.value as any, form)
+        await updateCourse(courseId.value as any, payload)
         ElMessage.success('更新成功')
       } else {
-        const res = await createCourse(form)
+        const res = await createCourse(payload)
         ElMessage.success('创建成功')
         router.replace(`/teacher/edit/${res.data}`)
       }
@@ -402,6 +420,9 @@ async function removeLesson(ls: LessonInfo) {
 onMounted(() => {
   loadCategories()
   loadDetail()
+  getOrgOptions().then(res => {
+    orgOptions.value = (res.data || []).map(o => ({ ...o, id: String(o.id) }))
+  }).catch(() => {})
 })
 </script>
 

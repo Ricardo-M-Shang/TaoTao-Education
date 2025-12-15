@@ -33,5 +33,15 @@ public class StudyStatisticsVO {
      * 最近7天学习时长（分钟）
      */
     private List<Integer> weeklyStudyTime;
+
+    /**
+     * 最近30天学习时长（分钟）
+     */
+    private List<Integer> monthlyStudyTime;
+
+    /**
+     * 课程进度分布 [0%,1-25%,26-50%,51-75%,76-100%]
+     */
+    private List<Integer> progressBuckets;
 }
 

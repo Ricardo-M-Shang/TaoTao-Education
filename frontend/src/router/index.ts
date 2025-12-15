@@ -55,10 +55,35 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '我的收藏', requireAuth: true, role: 1 }
       },
       {
+        path: 'user/coupons',
+        name: 'UserCoupons',
+        component: () => import('@/views/user/coupons.vue'),
+        meta: { title: '我的优惠券', requireAuth: true, role: 1 }
+      },
+      {
         path: 'user/statistics',
         name: 'UserStatistics',
         component: () => import('@/views/user/statistics.vue'),
         meta: { title: '学习统计', requireAuth: true, role: 1 }
+      },
+      // 学习中心相关路由
+      {
+        path: 'study/center',
+        name: 'StudyCenter',
+        component: () => import('@/views/study/center.vue'),
+        meta: { title: '学习中心', requireAuth: true, role: 1 }
+      },
+      {
+        path: 'study/records',
+        name: 'StudyRecords',
+        component: () => import('@/views/study/records.vue'),
+        meta: { title: '学习记录', requireAuth: true, role: 1 }
+      },
+      {
+        path: 'study/report',
+        name: 'StudyReport',
+        component: () => import('@/views/study/report.vue'),
+        meta: { title: '学习报告', requireAuth: true, role: 1 }
       },
       {
         path: 'teacher',
@@ -95,6 +120,55 @@ const routes: RouteRecordRaw[] = [
         name: 'TeacherProfile',
         component: () => import('@/views/teacher/profile.vue'),
         meta: { title: '资料设置', requireAuth: true, role: 2 }
+      },
+      {
+        path: 'org',
+        name: 'OrgCenter',
+        component: () => import('@/views/org/index.vue'),
+        meta: { title: '机构中心', requireAuth: true, role: 4 }
+      },
+      {
+        path: 'org/courses',
+        name: 'OrgCourses',
+        component: () => import('@/views/org/courses.vue'),
+        meta: { title: '课程审核', requireAuth: true, role: 4 }
+      },
+      {
+        path: 'org/orders',
+        name: 'OrgOrders',
+        component: () => import('@/views/org/orders.vue'),
+        meta: { title: '机构订单', requireAuth: true, role: 4 }
+      },
+      {
+        path: 'org/stats',
+        name: 'OrgStats',
+        component: () => import('@/views/org/stats.vue'),
+        meta: { title: '机构统计', requireAuth: true, role: 4 }
+      },
+      {
+        path: 'ops',
+        name: 'OpsCenter',
+        component: () => import('@/views/ops/index.vue'),
+        meta: { title: '运营中心', requireAuth: true, role: 5 }
+      },
+      // 聊天室相关路由
+      {
+        path: 'chat',
+        name: 'ChatRooms',
+        component: () => import('@/views/chat/rooms.vue'),
+        meta: { title: '聊天室', requireAuth: true }
+      },
+      {
+        path: 'chat/room/:id',
+        name: 'ChatRoom',
+        component: () => import('@/views/chat/room.vue'),
+        meta: { title: '聊天', requireAuth: true }
+      },
+      {
+        path: 'chat/manage/:id',
+        name: 'ChatManage',
+        component: () => import('@/views/chat/manage.vue'),
+        meta: { title: '聊天室管理', requireAuth: true, role: 2 }
       }
     ]
   },

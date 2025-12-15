@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: order-service
+
+  # 统一将Long序列化为字符串，避免前端JS精度丢失导致课程ID错误（课程不存在）
+  jackson:
+    generator:
+      write-numbers-as-strings: true
   
   # 数据源配置
   datasource:

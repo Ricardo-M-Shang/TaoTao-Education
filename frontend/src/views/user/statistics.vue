@@ -60,6 +60,37 @@
           <h3>课程进度分布</h3>
           <div class="chart-container" ref="progressChartRef"></div>
         </div>
+
+        <!-- 最近30天学习时长 -->
+        <div class="chart-card">
+          <h3>最近30天学习时长</h3>
+          <div class="chart-container" ref="monthlyChartRef"></div>
+        </div>
+      </div>
+
+      <!-- 学习洞察 -->
+      <div class="insight-section">
+        <h3>学习洞察</h3>
+        <div class="insight-grid">
+          <div class="insight-card">
+            <p class="label">本周学习</p>
+            <p class="value">{{ formatStudyTime(weeklyTotal) }}</p>
+            <p class="desc">活跃 {{ weeklyActiveDays }} 天 · 日均 {{ formatDailyMinutes(avgDailyStudy) }}</p>
+          </div>
+          <div class="insight-card">
+            <p class="label">近30天活跃</p>
+            <p class="value">{{ monthlyActiveDays }} 天</p>
+            <p class="desc">累计 {{ formatStudyTime(monthlyTotal) }}</p>
+          </div>
+          <div class="insight-card">
+            <p class="label">最近学习</p>
+            <p class="value">{{ recentRecords[0]?.courseTitle || '暂无课程' }}</p>
+            <p class="desc" v-if="recentRecords.length">
+              进度 {{ recentRecords[0].progress }}% · {{ formatRelativeTime(recentRecords[0].updateTime) }}
+            </p>
+            <p class="desc" v-else>完成一条学习记录即可解锁洞察</p>
+          </div>
+        </div>
       </div>
 
       <!-- 最近学习 -->
@@ -127,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Timer, Reading, Trophy, Calendar } from '@element-plus/icons-vue'
 import { getStudyStatistics, getRecentStudyRecords, StudyStatistics, RecentStudyRecord } from '@/api/study'
@@ -143,15 +174,24 @@ const statistics = ref<StudyStatistics>({
   totalCourses: 0,
   finishedCourses: 0,
   studyDays: 0,
-  weeklyStudyTime: []
+  weeklyStudyTime: [],
+  monthlyStudyTime: []
 })
 
 const recentRecords = ref<RecentStudyRecord[]>([])
 
+const weeklyTotal = computed(() => (statistics.value.weeklyStudyTime || []).reduce((sum, v) => sum + (v || 0), 0))
+const monthlyTotal = computed(() => (statistics.value.monthlyStudyTime || []).reduce((sum, v) => sum + (v || 0), 0))
+const weeklyActiveDays = computed(() => (statistics.value.weeklyStudyTime || []).filter(v => (v || 0) > 0).length)
+const monthlyActiveDays = computed(() => (statistics.value.monthlyStudyTime || []).filter(v => (v || 0) > 0).length)
+const avgDailyStudy = computed(() => weeklyTotal.value > 0 ? Math.round(weeklyTotal.value / 7) : 0)
+
 const weeklyChartRef = ref<HTMLElement | null>(null)
 const progressChartRef = ref<HTMLElement | null>(null)
+const monthlyChartRef = ref<HTMLElement | null>(null)
 let weeklyChart: echarts.ECharts | null = null
 let progressChart: echarts.ECharts | null = null
+let monthlyChart: echarts.ECharts | null = null
 
 function formatStudyTime(minutes: number): string {
   if (minutes < 60) return `${minutes}分钟`
@@ -161,6 +201,13 @@ function formatStudyTime(minutes: number): string {
   const days = Math.floor(hours / 24)
   const remainHours = hours % 24
   return remainHours > 0 ? `${days}天${remainHours}小时` : `${days}天`
+}
+
+function formatDailyMinutes(minutes: number): string {
+  if (minutes <= 0) return '0分钟'
+  if (minutes < 60) return `${minutes}分钟`
+  const hours = minutes / 60
+  return `${Math.round(hours * 10) / 10}小时`
 }
 
 function formatRelativeTime(time: string): string {
@@ -233,9 +280,8 @@ function initProgressChart() {
   if (!progressChartRef.value) return
   progressChart = echarts.init(progressChartRef.value)
   
-  const total = statistics.value.totalCourses || 0
-  const finished = statistics.value.finishedCourses || 0
-  const learning = total - finished
+  const buckets = statistics.value.progressBuckets || []
+  const labels = ['未开始', '1-25%', '26-50%', '51-75%', '76-100%']
   
   const option: echarts.EChartsOption = {
     tooltip: {
@@ -263,18 +309,49 @@ function initProgressChart() {
       emphasis: {
         label: { show: true, fontSize: 14, fontWeight: 'bold' }
       },
-      data: [
-        { value: finished, name: '已完成', itemStyle: { color: '#10b981' } },
-        { value: learning, name: '学习中', itemStyle: { color: '#6366f1' } }
-      ]
+      data: labels.map((name, idx) => ({
+        value: buckets[idx] || 0,
+        name,
+        itemStyle: { color: ['#9ca3af', '#a78bfa', '#60a5fa', '#34d399', '#10b981'][idx] }
+      }))
     }]
   }
   progressChart.setOption(option)
 }
 
+function initMonthlyChart() {
+  if (!monthlyChartRef.value) return
+  monthlyChart = echarts.init(monthlyChartRef.value)
+  const days = Array.from({ length: 30 }, (_, idx) => `${idx + 1}日`)
+  const data = statistics.value.monthlyStudyTime || []
+  const option: echarts.EChartsOption = {
+    tooltip: { trigger: 'axis', formatter: '{b}: {c}分钟' },
+    grid: { left: '3%', right: '4%', bottom: '6%', containLabel: true },
+    xAxis: { type: 'category', data: days, axisLabel: { color: '#9ca3af', fontSize: 10 } },
+    yAxis: { type: 'value', axisLabel: { color: '#9ca3af', fontSize: 10 }, splitLine: { lineStyle: { color: '#f3f4f6' } } },
+    series: [{
+      data,
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { color: '#6366f1', width: 2 },
+      itemStyle: { color: '#6366f1' },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(99,102,241,0.25)' },
+          { offset: 1, color: 'rgba(99,102,241,0.02)' }
+        ])
+      }
+    }]
+  }
+  monthlyChart.setOption(option)
+}
+
 function handleResize() {
   weeklyChart?.resize()
   progressChart?.resize()
+  monthlyChart?.resize()
 }
 
 async function loadStatistics() {
@@ -285,6 +362,7 @@ async function loadStatistics() {
     nextTick(() => {
       initWeeklyChart()
       initProgressChart()
+      initMonthlyChart()
     })
   } catch (e) {
     console.error('加载统计数据失败', e)
@@ -315,6 +393,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   weeklyChart?.dispose()
   progressChart?.dispose()
+  monthlyChart?.dispose()
 })
 </script>
 
@@ -421,6 +500,39 @@ onUnmounted(() => {
   
   .chart-container {
     height: 220px;
+  }
+}
+
+.insight-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  .insight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .insight-card {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid #eef2ff;
+
+    .label { font-size: 12px; color: var(--text-muted); }
+    .value { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .desc { font-size: 11px; color: var(--text-secondary); }
   }
 }
 
@@ -568,6 +680,12 @@ onUnmounted(() => {
   
   .charts-section {
     grid-template-columns: 1fr;
+  }
+
+  .insight-section {
+    .insight-grid {
+      grid-template-columns: 1fr;
+    }
   }
   
   .achievement-list {

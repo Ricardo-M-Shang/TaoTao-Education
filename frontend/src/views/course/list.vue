@@ -27,16 +27,32 @@
             <span :class="['tag', { active: query.isFree === 0 }]" @click="query.isFree = 0; load()">付费</span>
           </div>
         </div>
+        <div class="row">
+          <span class="label">区间</span>
+          <div class="range">
+            <el-input v-model.number="priceMin" placeholder="最低价" class="price-input" type="number" @keyup.enter="applyPriceRange" />
+            <span class="dash">-</span>
+            <el-input v-model.number="priceMax" placeholder="最高价" class="price-input" type="number" @keyup.enter="applyPriceRange" />
+            <el-button type="primary" size="small" :disabled="!canApplyPrice" @click="applyPriceRange">确定</el-button>
+            <el-button size="small" text :disabled="!query.minPrice && !query.maxPrice" @click="clearPriceRange">清空</el-button>
+          </div>
+        </div>
       </div>
 
       <!-- 工具栏 -->
       <div class="toolbar">
         <div class="sorts">
-          <span :class="{ active: query.orderBy === 'popular' }" @click="query.orderBy = 'popular'; load()">最热</span>
-          <span :class="{ active: query.orderBy === 'newest' }" @click="query.orderBy = 'newest'; load()">最新</span>
-          <span :class="{ active: query.orderBy === 'price' }" @click="query.orderBy = 'price'; load()">价格</span>
+          <span :class="{ active: query.orderBy === 'popular' }" @click="setOrder('popular')">最热</span>
+          <span :class="{ active: query.orderBy === 'newest' }" @click="setOrder('newest')">最新</span>
+          <span :class="{ active: query.orderBy === 'priceAsc' }" @click="setOrder('priceAsc')">价格↑</span>
+          <span :class="{ active: query.orderBy === 'priceDesc' }" @click="setOrder('priceDesc')">价格↓</span>
         </div>
-        <el-input v-model="query.keyword" placeholder="搜索课程" class="search" @keyup.enter="load"><template #prefix><el-icon><Search /></el-icon></template></el-input>
+        <div class="toolbar-actions">
+          <el-button text size="small" @click="resetFilters">重置</el-button>
+          <el-input v-model="query.keyword" placeholder="搜索课程" class="search" @keyup.enter="load">
+            <template #prefix><el-icon><Search /></el-icon></template>
+          </el-input>
+        </div>
       </div>
 
       <!-- 列表 -->
@@ -63,8 +79,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Search } from '@element-plus/icons-vue'
 import { getCourseList, getCategoryTree } from '@/api/course'
 import type { CourseListItem, CategoryTree, CourseListParams } from '@/types/course'
 
@@ -80,7 +97,23 @@ const typeText = (t: number) => ({ 1: '录播', 2: '直播', 3: '图文' }[t] ||
 const query = reactive<CourseListParams>({
   keyword: '',
   categoryId: route.query.categoryId ? Number(route.query.categoryId) : undefined,
-  type: undefined, isFree: undefined, orderBy: 'popular', pageNum: 1, pageSize: 12
+  type: undefined,
+  isFree: undefined,
+  minPrice: undefined,
+  maxPrice: undefined,
+  orderBy: 'popular',
+  pageNum: 1,
+  pageSize: 12
+})
+
+const priceMin = ref<number | undefined>(undefined)
+const priceMax = ref<number | undefined>(undefined)
+
+const canApplyPrice = computed(() => {
+  if (priceMin.value != null && priceMin.value < 0) return false
+  if (priceMax.value != null && priceMax.value < 0) return false
+  if (priceMin.value != null && priceMax.value != null && priceMin.value > priceMax.value) return false
+  return priceMin.value != null || priceMax.value != null
 })
 
 async function loadCategories() {
@@ -108,6 +141,43 @@ async function load() {
   finally { loading.value = false }
 }
 
+function setOrder(order: string) {
+  query.orderBy = order as any
+  query.pageNum = 1
+  load()
+}
+
+function applyPriceRange() {
+  if (!canApplyPrice.value) return
+  query.minPrice = priceMin.value != null ? Number(priceMin.value) : undefined
+  query.maxPrice = priceMax.value != null ? Number(priceMax.value) : undefined
+  query.pageNum = 1
+  load()
+}
+
+function clearPriceRange() {
+  priceMin.value = undefined
+  priceMax.value = undefined
+  query.minPrice = undefined
+  query.maxPrice = undefined
+  query.pageNum = 1
+  load()
+}
+
+function resetFilters() {
+  query.keyword = ''
+  query.categoryId = route.query.categoryId ? Number(route.query.categoryId) : undefined
+  query.type = undefined
+  query.isFree = undefined
+  query.minPrice = undefined
+  query.maxPrice = undefined
+  priceMin.value = undefined
+  priceMax.value = undefined
+  query.orderBy = 'popular'
+  query.pageNum = 1
+  load()
+}
+
 onMounted(() => { loadCategories(); load() })
 </script>
 
@@ -123,11 +193,16 @@ onMounted(() => { loadCategories(); load() })
     &:hover { color: var(--primary-color); }
     &.active { background: var(--primary-color); color: #fff; }
   }
+  .range { display: flex; align-items: center; gap: 8px;
+    .price-input { width: 110px; }
+    .dash { color: var(--text-muted); font-size: 12px; }
+  }
 }
 
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
   .sorts { display: flex; gap: 14px; span { font-size: 11px; color: var(--text-muted); cursor: pointer; padding-bottom: 2px; border-bottom: 2px solid transparent; &:hover, &.active { color: var(--primary-color); border-color: var(--primary-color); } } }
-  .search { width: 180px; :deep(.el-input__wrapper) { border-radius: 16px; padding: 4px 10px; } :deep(.el-input__inner) { font-size: 11px; } }
+  .toolbar-actions { display: flex; align-items: center; gap: 8px; }
+  .search { width: 200px; :deep(.el-input__wrapper) { border-radius: 16px; padding: 4px 10px; } :deep(.el-input__inner) { font-size: 11px; } }
 }
 
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; min-height: 200px; }

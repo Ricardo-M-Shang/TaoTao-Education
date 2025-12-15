@@ -48,3 +48,11 @@ export interface UserInfo {
   lastLoginTime?: string
 }
 
+/**
+ * 机构下拉选项
+ */
+export interface OrgOption {
+  id: number | string
+  name: string
+}
+

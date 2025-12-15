@@ -6,7 +6,10 @@ import com.taotao.education.user.dto.RegisterDTO;
 import com.taotao.education.user.dto.UserUpdateDTO;
 import com.taotao.education.user.entity.User;
 import com.taotao.education.user.vo.LoginVO;
+import com.taotao.education.user.vo.OrgOptionVO;
 import com.taotao.education.user.vo.UserVO;
+
+import java.util.List;
 
 /**
  * 用户服务接口
@@ -42,5 +45,15 @@ public interface UserService extends IService<User> {
      * 退出登录
      */
     void logout(Long userId);
+
+    /**
+     * 获取可用机构列表
+     */
+    List<OrgOptionVO> listOrgs();
+
+    /**
+     * 运营端用户概览
+     */
+    com.taotao.education.user.vo.OpsUserOverviewVO getOpsOverview();
 }
 

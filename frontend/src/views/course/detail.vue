@@ -16,7 +16,30 @@
             </div>
             <div class="action">
               <div class="price" v-if="course.isFree">免费</div>
-              <div class="price" v-else>¥{{ course.price }}<del v-if="course.originalPrice > course.price">¥{{ course.originalPrice }}</del></div>
+              <div class="price" v-else>
+                ¥{{ course.price }}
+                <del v-if="course.originalPrice > course.price">¥{{ course.originalPrice }}</del>
+                <span v-if="selectedCouponId" class="final-pay">预计支付 ¥{{ payAmount }}</span>
+              </div>
+              <div class="coupon-row" v-if="!course.isFree">
+                <el-select
+                  v-model="selectedCouponId"
+                  clearable
+                  placeholder="选择优惠券"
+                  :loading="loadingCoupons"
+                  style="width: 220px"
+                  @change="onCouponChange"
+                >
+                  <el-option
+                    v-for="c in availableCoupons"
+                    :key="c.userCouponId || c.id"
+                    :label="couponLabel(c)"
+                    :value="c.userCouponId"
+                  />
+                </el-select>
+                <span class="coupon-tip" v-if="availableCoupons.length">可用 {{ availableCoupons.length }} 张</span>
+                <span class="coupon-tip" v-else>暂无可用优惠券</span>
+              </div>
               <el-button type="primary" round :disabled="hasBought" @click="handleBuy">
                 {{ hasBought ? '已购买' : (course.isFree ? '立即学习' : '立即购买') }}
               </el-button>
@@ -109,6 +132,71 @@
                 </div>
               </div>
             </el-tab-pane>
+          <el-tab-pane label="问答" name="qa">
+            <div class="qa-section">
+              <div class="ask-box" v-if="hasBought">
+                <el-input
+                  v-model="questionForm.content"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="提问与课程相关的问题"
+                  maxlength="300"
+                  show-word-limit
+                />
+                <div class="ask-actions">
+                  <el-button type="primary" size="small" :loading="submittingQuestion" @click="submitQuestion">发布提问</el-button>
+                </div>
+              </div>
+              <div class="ask-tip" v-else>
+                <el-alert title="购买课程后可提问" type="info" :closable="false" />
+              </div>
+
+              <div class="qa-list">
+                <div v-for="q in questions" :key="q.id" class="qa-item">
+                  <div class="q-header">
+                    <div class="q-user">{{ q.nickname || q.username || '用户' }}</div>
+                    <div class="q-time">{{ formatTime(q.createTime) }}</div>
+                  </div>
+                  <div class="q-content">{{ q.content }}</div>
+                  <div class="answer-box" v-if="hasBought">
+                    <el-input
+                      v-model="answerInputs[q.id as any]"
+                      type="textarea"
+                      :rows="2"
+                      placeholder="写下你的回答"
+                      maxlength="300"
+                      show-word-limit
+                    />
+                    <div class="answer-actions">
+                      <el-button size="small" :loading="submittingAnswerId === q.id" @click="submitAnswer(q)">回答</el-button>
+                    </div>
+                  </div>
+                  <div class="answers" v-if="q.answers?.length">
+                    <div v-for="a in q.answers" :key="a.id" class="answer-item">
+                      <div class="ans-header">
+                        <span class="ans-user">{{ a.nickname || a.username || '用户' }}</span>
+                        <span class="ans-time">{{ formatTime(a.createTime) }}</span>
+                        <el-tag v-if="a.accepted" size="small" type="success">已采纳</el-tag>
+                        <el-button
+                          v-else-if="userStore.userInfo?.id === q.userId"
+                          text
+                          size="small"
+                          type="primary"
+                          :loading="acceptingId === a.id"
+                          @click="doAccept(a.id)"
+                        >采纳</el-button>
+                      </div>
+                      <div class="ans-content">{{ a.content }}</div>
+                    </div>
+                  </div>
+                </div>
+                <el-empty v-if="!questions.length" description="暂无问答" />
+                <div class="load-more" v-if="questionTotal > questions.length">
+                  <el-button text type="primary" @click="loadMoreQuestionsFn">加载更多</el-button>
+                </div>
+              </div>
+            </div>
+          </el-tab-pane>
           </el-tabs>
         </div>
         <div class="side">
@@ -117,6 +205,18 @@
             <el-avatar :size="48" />
             <div class="name">{{ course.teacherName }}</div>
           </div>
+          <div class="recommend-card" v-if="recommends.length">
+            <h4>猜你喜欢</h4>
+            <div class="rec-item" v-for="r in recommends" :key="r.id" @click="goRecommend(r.id)">
+              <img :src="r.cover || defaultCover" />
+              <div class="rec-info">
+                <p class="title">{{ r.title }}</p>
+                <p class="meta">{{ r.teacherName }} · {{ r.studyCount }}人学</p>
+                <p class="price" v-if="r.isFree">免费</p>
+                <p class="price" v-else>¥{{ r.price }}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </template>
@@ -124,15 +224,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, CircleCheck } from '@element-plus/icons-vue'
 import { getCourseDetail } from '@/api/course'
-import { createOrder, checkBuyCourse } from '@/api/order'
+import { createOrder, checkBuyCourse, getAvailableCoupons } from '@/api/order'
 import { addReview, getReviewList, checkReviewed, ReviewInfo } from '@/api/review'
+import { addQuestion, addAnswer, getQuestionList, acceptAnswer, type QuestionItem } from '@/api/qa'
 import { addFavorite, removeFavorite, checkFavorite } from '@/api/favorite'
 import { getCourseStudyRecords, StudyRecord } from '@/api/study'
+import { getCourseList } from '@/api/course'
 import { useUserStore } from '@/stores/user'
 import type { CourseDetail, LessonInfo } from '@/types/course'
 
@@ -146,6 +248,43 @@ const activeChapters = ref<number[]>([])
 const hasBought = ref(false)
 const isFavorite = ref(false)
 const hasReviewed = ref(false)
+const selectedCouponId = ref<number | string | null>(null)
+const availableCoupons = ref<any[]>([])
+const loadingCoupons = ref(false)
+const payAmount = computed(() => {
+  if (!course.value) return 0
+  const price = Number(course.value.price || 0)
+  if (!selectedCouponId.value) return price
+  
+  const c = availableCoupons.value.find((it) => String(it.userCouponId) === String(selectedCouponId.value))
+  if (!c) return price
+  
+  // 检查使用门槛
+  const thresholdAmount = Number(c.thresholdAmount || 0)
+  if (thresholdAmount > 0 && price < thresholdAmount) {
+    console.warn(`优惠券使用门槛不满足：需要¥${thresholdAmount}，当前¥${price}`)
+    return price
+  }
+  
+  let discount = 0
+  if (c.type === 1) {
+    // 满减券
+    discount = Number(c.discountAmount || 0)
+  } else if (c.type === 2) {
+    // 折扣券
+    const rate = Number(c.discountRate || 1)
+    discount = price - Number((price * rate).toFixed(2))
+  }
+  
+  // 确保折扣不超过商品价格
+  if (discount < 0) discount = 0
+  if (discount > price) discount = price
+  
+  const finalPrice = Number((price - discount).toFixed(2))
+  console.log('价格计算:', { 原价: price, 优惠券: c.name, 门槛: thresholdAmount, 折扣: discount, 最终价格: finalPrice })
+  
+  return finalPrice
+})
 const defaultCover = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600'
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
@@ -159,6 +298,54 @@ const reviewForm = reactive({
   content: '',
   isAnonymous: 0
 })
+
+// 问答相关
+const questions = ref<QuestionItem[]>([])
+const questionPage = ref(1)
+const questionTotal = ref(0)
+const submittingQuestion = ref(false)
+const submittingAnswerId = ref<number | string | null>(null)
+const acceptingId = ref<number | string | null>(null)
+const questionForm = reactive({ content: '' })
+const answerInputs = reactive<Record<string, string>>({})
+const recommends = ref<CourseDetail[]>([])
+
+const couponLabel = (c: any) => {
+  if (!c) return ''
+  
+  const price = Number(course.value?.price || 0)
+  let savingText = ''
+  
+  if (c.type === 1) {
+    // 满减券
+    const discountAmount = Number(c.discountAmount || 0)
+    const threshold = Number(c.thresholdAmount || 0)
+    savingText = `减¥${discountAmount}`
+    if (threshold > 0) {
+      savingText += ` (满¥${threshold})`
+    }
+    return `${c.name || '满减券'} - ${savingText}`
+  }
+  
+  if (c.type === 2) {
+    // 折扣券
+    const rate = Number(c.discountRate || 1)
+    const discount = Math.round((1 - rate) * 100)
+    const threshold = Number(c.thresholdAmount || 0)
+    savingText = `${Math.round(rate * 100)}折`
+    if (threshold > 0) {
+      savingText += ` (满¥${threshold})`
+    }
+    // 计算实际节省金额
+    if (price > 0) {
+      const actualSaving = price - (price * rate)
+      savingText += ` 省¥${actualSaving.toFixed(2)}`
+    }
+    return `${c.name || '折扣券'} - ${savingText}`
+  }
+  
+  return c.name || '优惠券'
+}
 
 // 学习记录
 const studyRecords = ref<StudyRecord[]>([])
@@ -207,8 +394,37 @@ async function load() {
 
     // 加载评价
     loadReviews()
+    // 加载可用优惠券（需登录）
+    if (userStore.isLoggedIn) {
+      await loadCoupons()
+    }
+    // 加载问答
+    loadQuestions()
+    loadRecommends()
   } catch (e) { console.error(e) }
   finally { loading.value = false }
+}
+
+async function loadCoupons() {
+  if (!userStore.isLoggedIn || !course.value) return
+  loadingCoupons.value = true
+  try {
+    const res = await getAvailableCoupons(course.value.price)
+    availableCoupons.value = res.data || []
+    console.log('加载到的优惠券:', availableCoupons.value)
+  } catch (e) { 
+    console.error('加载优惠券失败:', e)
+  } finally { 
+    loadingCoupons.value = false 
+  }
+}
+
+function onCouponChange(value: any) {
+  console.log('选择优惠券:', value)
+  const selectedCoupon = availableCoupons.value.find(c => String(c.userCouponId) === String(value))
+  if (selectedCoupon) {
+    console.log('选中的优惠券详情:', selectedCoupon)
+  }
 }
 
 async function loadReviews() {
@@ -224,30 +440,81 @@ async function loadReviews() {
   } catch (e) { console.error(e) }
 }
 
+async function loadQuestions() {
+  if (!course.value) return
+  try {
+    const res = await getQuestionList(course.value.id, questionPage.value)
+    const list = res.data.records || []
+    if (questionPage.value === 1) {
+      questions.value = list
+    } else {
+      questions.value.push(...list)
+    }
+    questionTotal.value = res.data.total
+  } catch (e) { console.error(e) }
+}
+
 async function loadMoreReviews() {
   reviewPage.value++
   await loadReviews()
 }
 
+async function loadMoreQuestionsFn() {
+  questionPage.value++
+  await loadQuestions()
+}
+
 async function handleBuy() {
   if (!userStore.isLoggedIn) { router.push({ name: 'Login', query: { redirect: route.fullPath } }); return }
   if (!course.value) return
+  const payload: any = {
+    courseId: course.value.id,
+    courseTitle: course.value.title,
+    courseCover: course.value.cover,
+    teacherName: course.value.teacherName,
+    teacherId: course.value.teacherId,
+    orgId: course.value.orgId,
+    orgName: course.value.orgName,
+    originalPrice: course.value.price,
+    username: userStore.userInfo?.username,
+    couponId: selectedCouponId.value || undefined
+  }
   if (course.value.isFree) {
-    await createOrder({ courseId: course.value.id, courseTitle: course.value.title, courseCover: course.value.cover, teacherName: course.value.teacherName, originalPrice: 0, username: userStore.userInfo?.username })
+    await createOrder({ ...payload, originalPrice: 0 })
     ElMessage.success('已加入学习')
     hasBought.value = true
     return
   }
   ElMessageBox.confirm(`确定购买「${course.value.title}」？`, '购买确认').then(async () => {
-    await createOrder({ courseId: course.value!.id, courseTitle: course.value!.title, courseCover: course.value!.cover, teacherName: course.value!.teacherName, originalPrice: course.value!.price, username: userStore.userInfo?.username })
+    await createOrder(payload)
     ElMessage.success('订单已创建')
     router.push('/user/orders')
   }).catch(() => {})
 }
 
+async function loadRecommends() {
+  if (!course.value) return
+  try {
+    const res = await getCourseList({ pageNum: 1, pageSize: 4, orderBy: 'popular', categoryId: course.value.categoryId as any })
+    recommends.value = (res.data.records || []).map((c: any) => ({
+      id: String(c.id),
+      title: c.title,
+      cover: c.cover,
+      teacherName: c.teacherName,
+      studyCount: c.studyCount,
+      isFree: Number(c.isFree),
+      price: Number(c.price)
+    }))
+  } catch (e) { console.error(e) }
+}
+
 function goStudy() {
   if (!course.value) return
   router.push(`/study/${course.value.id}`)
+}
+
+function goRecommend(id: string | number) {
+  router.push(`/course/${id}`)
 }
 
 async function toggleFavorite() {
@@ -264,6 +531,45 @@ async function toggleFavorite() {
       ElMessage.success('收藏成功')
     }
   } catch (e) { console.error(e) }
+}
+
+async function submitQuestion() {
+  if (!course.value || !questionForm.content.trim()) return
+  submittingQuestion.value = true
+  try {
+    await addQuestion({ courseId: course.value.id, content: questionForm.content.trim() })
+    ElMessage.success('提问成功')
+    questionForm.content = ''
+    questionPage.value = 1
+    await loadQuestions()
+  } catch (e) { console.error(e) }
+  finally { submittingQuestion.value = false }
+}
+
+async function submitAnswer(q: QuestionItem) {
+  if (!course.value) return
+  const content = (answerInputs[q.id as any] || '').trim()
+  if (!content) return
+  submittingAnswerId.value = q.id
+  try {
+    await addAnswer({ courseId: course.value.id, questionId: q.id, content })
+    ElMessage.success('回答成功')
+    answerInputs[q.id as any] = ''
+    questionPage.value = 1
+    await loadQuestions()
+  } catch (e) { console.error(e) }
+  finally { submittingAnswerId.value = null }
+}
+
+async function doAccept(answerId: number | string) {
+  acceptingId.value = answerId
+  try {
+    await acceptAnswer(answerId)
+    ElMessage.success('已采纳该回答')
+    questionPage.value = 1
+    await loadQuestions()
+  } catch (e) { console.error(e) }
+  finally { acceptingId.value = null }
 }
 
 async function submitReview() {
@@ -299,7 +605,10 @@ function handleLessonClick(lesson: LessonInfo) {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadCoupons()
+})
 </script>
 
 <style lang="scss" scoped>

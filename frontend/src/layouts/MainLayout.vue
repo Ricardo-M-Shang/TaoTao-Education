@@ -10,6 +10,10 @@
         <nav class="nav">
           <router-link to="/" class="nav-item" :class="{ active: route.path === '/' }">首页</router-link>
           <router-link to="/course" class="nav-item" :class="{ active: route.path.startsWith('/course') }">课程</router-link>
+          <router-link v-if="isStudent" to="/study/center" class="nav-item" :class="{ active: route.path.startsWith('/study') }">学习中心</router-link>
+          <router-link v-if="userStore.isLoggedIn" to="/chat" class="nav-item" :class="{ active: route.path.startsWith('/chat') }">聊天室</router-link>
+          <router-link v-if="isOrg" to="/org" class="nav-item" :class="{ active: route.path.startsWith('/org') }">机构</router-link>
+          <router-link v-if="isOps" to="/ops" class="nav-item" :class="{ active: route.path.startsWith('/ops') }">运营</router-link>
         </nav>
         <div class="user">
           <template v-if="userStore.isLoggedIn">
@@ -21,14 +25,28 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="user">个人中心</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" divided disabled>学习功能</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="study-center">学习中心</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="study-records">学习记录</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="study-report">学习报告</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" divided disabled>我的信息</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" command="orders">我的订单</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" command="courses">我的课程</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" command="favorites">我的收藏</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="coupons">我的优惠券</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" command="statistics">学习统计</el-dropdown-item>
+                  <el-dropdown-item divided disabled>互动功能</el-dropdown-item>
+                  <el-dropdown-item command="chat">聊天室</el-dropdown-item>
                   <el-dropdown-item v-if="isTeacher" divided disabled>讲师功能</el-dropdown-item>
                   <el-dropdown-item v-if="isTeacher" command="t-courses">讲师课程</el-dropdown-item>
                   <el-dropdown-item v-if="isTeacher" command="t-stats">收益统计</el-dropdown-item>
                   <el-dropdown-item v-if="isTeacher" command="t-profile">资料设置</el-dropdown-item>
+                <el-dropdown-item v-if="isOrg" divided disabled>机构功能</el-dropdown-item>
+                <el-dropdown-item v-if="isOrg" command="o-courses">课程审核</el-dropdown-item>
+                <el-dropdown-item v-if="isOrg" command="o-orders">机构订单</el-dropdown-item>
+              <el-dropdown-item v-if="isOrg" command="o-stats">收益统计</el-dropdown-item>
+              <el-dropdown-item v-if="isOps" divided disabled>运营功能</el-dropdown-item>
+              <el-dropdown-item v-if="isOps" command="op-center">运营中心</el-dropdown-item>
                   <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -72,21 +90,33 @@ const userStore = useUserStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 const isTeacher = computed(() => userStore.userInfo?.role === 2)
 const isStudent = computed(() => userStore.userInfo?.role === 1)
+const isOrg = computed(() => userStore.userInfo?.role === 4)
+const isOps = computed(() => userStore.userInfo?.role === 5)
 
 function handleCommand(cmd: string) {
   if (cmd === 'logout') {
     ElMessageBox.confirm('确定退出登录？', '提示').then(() => { userStore.logoutAction(); router.push('/') }).catch(() => {})
   } else if (cmd === 'user') {
     if (isTeacher.value) router.push('/teacher')
+    else if (isOrg.value) router.push('/org')
     else router.push('/user')
   }
+  else if (cmd === 'study-center') router.push('/study/center')
+  else if (cmd === 'study-records') router.push('/study/records')
+  else if (cmd === 'study-report') router.push('/study/report')
   else if (cmd === 'orders') router.push('/user/orders')
   else if (cmd === 'courses') router.push('/user/courses')
   else if (cmd === 'favorites') router.push('/user/favorites')
+  else if (cmd === 'coupons') router.push('/user/coupons')
   else if (cmd === 'statistics') router.push('/user/statistics')
+  else if (cmd === 'chat') router.push('/chat')
   else if (cmd === 't-courses') router.push('/teacher/courses')
   else if (cmd === 't-stats') router.push('/teacher/stats')
   else if (cmd === 't-profile') router.push('/teacher/profile')
+  else if (cmd === 'o-courses') router.push('/org/courses')
+  else if (cmd === 'o-orders') router.push('/org/orders')
+  else if (cmd === 'o-stats') router.push('/org/stats')
+  else if (cmd === 'op-center') router.push('/ops')
 }
 </script>
 

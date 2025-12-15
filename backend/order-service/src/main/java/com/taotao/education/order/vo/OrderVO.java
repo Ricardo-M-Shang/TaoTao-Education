@@ -34,6 +34,12 @@ public class OrderVO {
     @Schema(description = "讲师名称")
     private String teacherName;
 
+    @Schema(description = "机构ID")
+    private Long orgId;
+
+    @Schema(description = "机构名称")
+    private String orgName;
+
     @Schema(description = "原价")
     private BigDecimal originalPrice;
 
@@ -42,6 +48,15 @@ public class OrderVO {
 
     @Schema(description = "实付金额")
     private BigDecimal payAmount;
+
+    @Schema(description = "优惠券ID")
+    private Long couponId;
+
+    @Schema(description = "机构分成")
+    private BigDecimal orgIncome;
+
+    @Schema(description = "平台分成")
+    private BigDecimal platformIncome;
 
     @Schema(description = "支付方式 1-支付宝 2-微信")
     private Integer payType;

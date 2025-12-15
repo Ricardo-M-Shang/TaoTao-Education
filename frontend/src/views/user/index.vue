@@ -8,6 +8,10 @@
           <p>{{ userStore.userInfo?.signature || '这个人很懒，什么都没写~' }}</p>
         </div>
         <div class="header-actions">
+          <el-button size="small" round @click="$router.push('/user/coupons')">
+            <el-icon><Tickets /></el-icon>
+            我的优惠券
+          </el-button>
           <el-button size="small" round @click="$router.push('/user/statistics')">
             <el-icon><DataAnalysis /></el-icon>
             学习统计

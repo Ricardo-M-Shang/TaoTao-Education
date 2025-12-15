@@ -9,16 +9,23 @@ import com.taotao.education.common.result.ResultCode;
 import com.taotao.education.order.dto.OrderCreateDTO;
 import com.taotao.education.order.entity.Order;
 import com.taotao.education.order.entity.UserCourse;
+import com.taotao.education.order.entity.UserCoupon;
 import com.taotao.education.order.mapper.OrderMapper;
 import com.taotao.education.order.mapper.UserCourseMapper;
+import com.taotao.education.order.mapper.UserCouponMapper;
 import com.taotao.education.order.service.OrderService;
+import com.taotao.education.order.service.CouponService;
 import com.taotao.education.order.vo.OrderVO;
+import com.taotao.education.order.vo.OrgStatsVO;
+import com.taotao.education.order.vo.OpsOrderOverviewVO;
+import com.taotao.education.order.vo.OpsTrendVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,6 +38,8 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements OrderService {
 
     private final UserCourseMapper userCourseMapper;
+    private final UserCouponMapper userCouponMapper;
+    private final CouponService couponService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -43,19 +52,24 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // 生成订单号
         String orderNo = IdUtil.getSnowflakeNextIdStr();
 
+        BigDecimal discount = couponService.verifyAndCalc(userId, createDTO.getCouponId(), createDTO.getOriginalPrice());
+
         // 创建订单
         Order order = new Order();
         order.setOrderNo(orderNo);
         order.setUserId(userId);
         order.setTeacherId(createDTO.getTeacherId());
+        order.setOrgId(createDTO.getOrgId());
+        order.setOrgName(createDTO.getOrgName());
         order.setCourseId(createDTO.getCourseId());
         order.setCourseTitle(createDTO.getCourseTitle());
         order.setCourseCover(createDTO.getCourseCover());
         order.setTeacherName(createDTO.getTeacherName());
         order.setUsername(createDTO.getUsername());
         order.setOriginalPrice(createDTO.getOriginalPrice());
-        order.setDiscountAmount(BigDecimal.ZERO);
-        order.setPayAmount(createDTO.getOriginalPrice());
+        order.setCouponId(createDTO.getCouponId());
+        order.setDiscountAmount(discount);
+        order.setPayAmount(createDTO.getOriginalPrice().subtract(discount));
         order.setStatus(0); // 待支付
         order.setExpireTime(LocalDateTime.now().plusMinutes(30)); // 30分钟后过期
 
@@ -146,7 +160,27 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setStatus(1); // 已支付
         order.setPayType(payType);
         order.setPayTime(LocalDateTime.now());
+        BigDecimal payAmount = order.getPayAmount() == null ? BigDecimal.ZERO : order.getPayAmount();
+        BigDecimal orgIncome = payAmount.multiply(new BigDecimal("0.6")).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal platformIncome = payAmount.subtract(orgIncome).setScale(2, RoundingMode.HALF_UP);
+        order.setOrgIncome(orgIncome);
+        order.setPlatformIncome(platformIncome);
         this.updateById(order);
+
+        // 核销优惠券
+        if (order.getCouponId() != null) {
+            LambdaQueryWrapper<UserCoupon> ucWrapper = new LambdaQueryWrapper<>();
+            ucWrapper.eq(UserCoupon::getId, order.getCouponId())
+                    .eq(UserCoupon::getUserId, order.getUserId())
+                    .eq(UserCoupon::getStatus, 0);
+            UserCoupon uc = userCouponMapper.selectOne(ucWrapper);
+            if (uc != null) {
+                uc.setStatus(1);
+                uc.setOrderNo(orderNo);
+                uc.setUseTime(LocalDateTime.now());
+                userCouponMapper.updateById(uc);
+            }
+        }
 
         // 创建用户课程关联
         UserCourse userCourse = new UserCourse();
@@ -182,6 +216,65 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                .groupBy(Order::getUserId);
         vo.setStudentCount((int) this.count(wrapper));
         return vo;
+    }
+
+    @Override
+    public Page<OrderVO> getOrgOrders(Long orgId, Integer status, Long teacherId, Integer pageNum, Integer pageSize) {
+        Page<Order> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Order::getOrgId, orgId);
+        if (status != null) {
+            wrapper.eq(Order::getStatus, status);
+        }
+        if (teacherId != null) {
+            wrapper.eq(Order::getTeacherId, teacherId);
+        }
+        wrapper.orderByDesc(Order::getCreateTime);
+        Page<Order> result = this.page(page, wrapper);
+        Page<OrderVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+        List<OrderVO> voList = result.getRecords().stream().map(order -> {
+            OrderVO vo = new OrderVO();
+            BeanUtils.copyProperties(order, vo);
+            return vo;
+        }).collect(Collectors.toList());
+        voPage.setRecords(voList);
+        return voPage;
+    }
+
+    @Override
+    public OrgStatsVO getOrgStats(Long orgId) {
+        OrgStatsVO vo = new OrgStatsVO();
+        vo.setTotalIncome(baseMapper.sumPaidAmountByOrg(orgId));
+        vo.setTodayIncome(baseMapper.sumTodayIncomeByOrg(orgId));
+        vo.setMonthIncome(baseMapper.sumMonthIncomeByOrg(orgId));
+        vo.setPaidOrders(baseMapper.countPaidOrdersByOrg(orgId));
+        return vo;
+    }
+
+    @Override
+    public java.util.List<com.taotao.education.order.vo.OrgTrendVO> getOrgTrend(Long orgId, Integer days) {
+        if (days == null || days <= 0) {
+            days = 7;
+        }
+        return baseMapper.sumIncomeTrendByOrg(orgId, days);
+    }
+
+    @Override
+    public OpsOrderOverviewVO getOpsOverview() {
+        OpsOrderOverviewVO vo = new OpsOrderOverviewVO();
+        vo.setTotalIncome(baseMapper.sumPaidAmountAll());
+        vo.setTodayIncome(baseMapper.sumTodayIncomeAll());
+        vo.setMonthIncome(baseMapper.sumMonthIncomeAll());
+        vo.setPaidOrders(baseMapper.countPaidOrdersAll());
+        return vo;
+    }
+
+    @Override
+    public List<OpsTrendVO> getOpsTrend(Integer days) {
+        if (days == null || days <= 0) {
+            days = 7;
+        }
+        return baseMapper.sumIncomeTrendAll(days);
     }
 }
 

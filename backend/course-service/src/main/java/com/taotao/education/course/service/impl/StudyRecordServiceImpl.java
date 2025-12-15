@@ -146,6 +146,18 @@ public class StudyRecordServiceImpl extends ServiceImpl<StudyRecordMapper, Study
             weeklyStudyTime.add(dayTime != null ? dayTime : 0);
         }
         vo.setWeeklyStudyTime(weeklyStudyTime);
+
+        // 获取最近30天学习时长
+        List<Integer> monthlyStudyTime = new ArrayList<>();
+        for (int i = 29; i >= 0; i--) {
+            Integer dayTime = baseMapper.getDayStudyTime(userId, i);
+            monthlyStudyTime.add(dayTime != null ? dayTime : 0);
+        }
+        vo.setMonthlyStudyTime(monthlyStudyTime);
+
+        // 课程进度分布 [0,1-25,26-50,51-75,76-100]
+        List<Integer> progressBuckets = calculateProgressBuckets(userId);
+        vo.setProgressBuckets(progressBuckets);
         
         return vo;
     }
@@ -176,6 +188,31 @@ public class StudyRecordServiceImpl extends ServiceImpl<StudyRecordMapper, Study
     @Override
     public List<RecentStudyRecordVO> getRecentStudyRecords(Long userId, int limit) {
         return baseMapper.getRecentStudyRecords(userId, limit);
+    }
+
+    /**
+     * 计算用户课程进度分布
+     */
+    private List<Integer> calculateProgressBuckets(Long userId) {
+        // 获取用户学习过的所有课程ID
+        LambdaQueryWrapper<StudyRecord> courseWrapper = new LambdaQueryWrapper<>();
+        courseWrapper.eq(StudyRecord::getUserId, userId)
+                .select(StudyRecord::getCourseId)
+                .groupBy(StudyRecord::getCourseId);
+        List<StudyRecord> courseRecords = this.list(courseWrapper);
+
+        int[] buckets = new int[5]; // 0,1-25,26-50,51-75,76-100
+        for (StudyRecord record : courseRecords) {
+            int progress = calculateCourseProgress(userId, record.getCourseId());
+            if (progress == 0) buckets[0]++; // 未开始
+            else if (progress <= 25) buckets[1]++;
+            else if (progress <= 50) buckets[2]++;
+            else if (progress <= 75) buckets[3]++;
+            else buckets[4]++;
+        }
+        List<Integer> list = new ArrayList<>();
+        for (int b : buckets) list.add(b);
+        return list;
     }
 }
 

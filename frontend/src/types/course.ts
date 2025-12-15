@@ -6,6 +6,8 @@ export interface CourseListParams {
   categoryId?: number
   type?: number
   isFree?: number
+  minPrice?: number
+  maxPrice?: number
   status?: number
   orderBy?: string
   pageNum: number
@@ -21,6 +23,7 @@ export interface CourseListItem {
   subtitle: string
   cover: string
   teacherName: string
+  orgName?: string
   categoryName: string
   type: number
   price: number
@@ -31,6 +34,7 @@ export interface CourseListItem {
   score: number
   createTime: string
   status?: number
+  auditRemark?: string
 }
 
 /**
@@ -71,12 +75,14 @@ export interface LessonInfo {
  * 课程详情
  */
 export interface CourseDetail {
-  id: number
+  id: number | string
   title: string
   subtitle: string
   cover: string
   description: string
   content: string
+  orgId?: number | string
+  orgName?: string
   teacherId: number
   teacherName: string
   categoryId: number

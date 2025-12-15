@@ -9,6 +9,7 @@ import com.taotao.education.order.service.UserCourseService;
 import com.taotao.education.order.vo.TeacherStatsVO;
 import com.taotao.education.order.vo.TeacherStudentVO;
 import com.taotao.education.order.vo.OrderVO;
+import com.taotao.education.order.vo.OrgStatsVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final UserCourseService userCourseService;
+    // CouponService retained for other endpoints if needed in future
 
     @Operation(summary = "创建订单")
     @PostMapping("/create")
@@ -83,6 +85,24 @@ public class OrderController {
         return Result.success(stats);
     }
 
+    @Operation(summary = "机构收益统计")
+    @GetMapping("/org/stats")
+    public Result<OrgStatsVO> orgStats(@RequestHeader("X-User-Id") Long orgId) {
+        OrgStatsVO stats = orderService.getOrgStats(orgId);
+        return Result.success(stats);
+    }
+
+    @Operation(summary = "机构订单列表")
+    @GetMapping("/org/list")
+    public Result<Page<OrderVO>> orgOrders(@RequestHeader("X-User-Id") Long orgId,
+                                           @RequestParam(required = false) Integer status,
+                                           @RequestParam(required = false) Long teacherId,
+                                           @RequestParam(defaultValue = "1") Integer pageNum,
+                                           @RequestParam(defaultValue = "10") Integer pageSize) {
+        Page<OrderVO> page = orderService.getOrgOrders(orgId, status, teacherId, pageNum, pageSize);
+        return Result.success(page);
+    }
+
     @Operation(summary = "讲师查看课程学员列表")
     @GetMapping("/teacher/students/{courseId}")
     public Result<List<TeacherStudentVO>> listStudents(@RequestHeader("X-User-Id") Long teacherId,
@@ -90,5 +110,6 @@ public class OrderController {
         List<TeacherStudentVO> students = userCourseService.listStudentsByCourse(teacherId, courseId);
         return Result.success(students);
     }
+
 }
 

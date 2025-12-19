@@ -25,9 +25,10 @@
                 <el-select
                   v-model="selectedCouponId"
                   clearable
-                  placeholder="选择优惠券"
+                  :placeholder="availableCoupons.length ? `有 ${availableCoupons.length} 张优惠券可用` : '暂无可用优惠券'"
                   :loading="loadingCoupons"
-                  style="width: 220px"
+                  size="default"
+                  class="coupon-select"
                   @change="onCouponChange"
                 >
                   <el-option
@@ -37,8 +38,6 @@
                     :value="c.userCouponId"
                   />
                 </el-select>
-                <span class="coupon-tip" v-if="availableCoupons.length">可用 {{ availableCoupons.length }} 张</span>
-                <span class="coupon-tip" v-else>暂无可用优惠券</span>
               </div>
               <el-button type="primary" round :disabled="hasBought" @click="handleBuy">
                 {{ hasBought ? '已购买' : (course.isFree ? '立即学习' : '立即购买') }}
@@ -267,10 +266,11 @@ const payAmount = computed(() => {
   }
   
   let discount = 0
-  if (c.type === 1) {
+  const type = Number(c.type)
+  if (type === 1) {
     // 满减券
     discount = Number(c.discountAmount || 0)
-  } else if (c.type === 2) {
+  } else if (type === 2) {
     // 折扣券
     const rate = Number(c.discountRate || 1)
     discount = price - Number((price * rate).toFixed(2))
@@ -315,8 +315,9 @@ const couponLabel = (c: any) => {
   
   const price = Number(course.value?.price || 0)
   let savingText = ''
+  const type = Number(c.type)
   
-  if (c.type === 1) {
+  if (type === 1) {
     // 满减券
     const discountAmount = Number(c.discountAmount || 0)
     const threshold = Number(c.thresholdAmount || 0)
@@ -327,7 +328,7 @@ const couponLabel = (c: any) => {
     return `${c.name || '满减券'} - ${savingText}`
   }
   
-  if (c.type === 2) {
+  if (type === 2) {
     // 折扣券
     const rate = Number(c.discountRate || 1)
     const discount = Math.round((1 - rate) * 100)
@@ -623,16 +624,35 @@ onMounted(() => {
   .meta { display: flex; align-items: center; gap: 16px; font-size: 11px; opacity: 0.7; margin-bottom: 20px;
     :deep(.el-rate) { height: auto; }
   }
-  .action { display: flex; align-items: center; gap: 12px; }
-  .price { font-size: 24px; font-weight: 700; color: #f87171; del { font-size: 12px; color: #999; margin-left: 6px; } }
+  .action { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .price { font-size: 24px; font-weight: 700; color: #f87171; margin-right: 8px; del { font-size: 12px; color: rgba(255,255,255,0.6); margin-left: 6px; } .final-pay { font-size: 13px; color: #fbbf24; margin-left: 8px; } }
+  .coupon-row {
+    .coupon-select { width: 180px; }
+    :deep(.el-input__wrapper) { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); box-shadow: none; }
+    :deep(.el-input__inner) { color: #fff; &::placeholder { color: rgba(255,255,255,0.6); } }
+  }
 }
 
 .content { max-width: 1100px; margin: 0 auto; padding: 20px 16px; display: flex; gap: 20px;
-  .main { flex: 1; background: #fff; border-radius: 10px; padding: 16px; }
-  .side { width: 220px; flex-shrink: 0; }
+  .main { flex: 1; background: #fff; border-radius: 10px; padding: 16px; min-width: 0; }
+  .side { width: 260px; flex-shrink: 0; }
 }
 
-.intro { h3 { font-size: 14px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #eee; } p { font-size: 12px; color: #666; line-height: 1.6; } }
+.recommend-card {
+  margin-top: 16px; background: #fff; border-radius: 10px; padding: 16px;
+  h4 { font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-left: 8px; border-left: 3px solid var(--primary-color); }
+  .rec-item {
+    display: flex; gap: 10px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s;
+    &:hover { transform: translateX(4px); .title { color: var(--primary-color); } }
+    img { width: 90px; height: 60px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+    .rec-info {
+      flex: 1; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;
+      .title { font-size: 13px; color: #333; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .meta { font-size: 11px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .price { font-size: 13px; font-weight: 600; color: #f87171; margin: 0; }
+    }
+  }
+}
 
 .ch-title { display: flex; justify-content: space-between; width: 100%; padding-right: 12px; font-size: 12px; .cnt { font-size: 10px; color: #999; } }
 .lesson { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #f5f5f5; font-size: 11px; cursor: pointer; transition: background 0.2s;

@@ -169,6 +169,13 @@ const routes: RouteRecordRaw[] = [
         name: 'ChatManage',
         component: () => import('@/views/chat/manage.vue'),
         meta: { title: '聊天室管理', requireAuth: true, role: 2 }
+      },
+      // AI推荐相关路由
+      {
+        path: 'ai/recommend',
+        name: 'AIRecommend',
+        component: () => import('@/views/ai/recommend.vue'),
+        meta: { title: 'AI智能推荐' }
       }
     ]
   },

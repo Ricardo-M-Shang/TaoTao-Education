@@ -19,6 +19,7 @@
         <module>order-service</module>
         <module>learning-service</module>
         <module>chat-service</module>
+        <module>ai-service</module>
     </modules>
 
     <parent>

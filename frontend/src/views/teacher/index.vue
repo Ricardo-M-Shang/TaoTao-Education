@@ -26,12 +26,18 @@
         </div>
       </div>
     </div>
+    
+    <!-- AI 助手悬浮按钮 -->
+    <TeacherAIFloatButton />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import TeacherAIFloatButton from '@/components/TeacherAIFloatButton.vue'
+
 const router = useRouter()
+
 function go(path: string) { router.push(path) }
 </script>
 
@@ -42,6 +48,7 @@ function go(path: string) { router.push(path) }
   h2 { font-size: 18px; margin-bottom: 4px; }
   .sub { font-size: 12px; color: var(--text-muted); }
 }
+
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .card { padding: 16px; border: 1px solid #eee; border-radius: 10px; cursor: pointer; transition: all 0.2s;
   .icon { font-size: 28px; margin-bottom: 10px; }

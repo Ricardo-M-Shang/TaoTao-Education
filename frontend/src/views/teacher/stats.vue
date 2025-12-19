@@ -31,12 +31,16 @@
         </div>
       </div>
     </div>
+
+    <!-- AI 助手悬浮按钮 -->
+    <TeacherAIFloatButton />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getTeacherStats, TeacherStats } from '@/api/teacher'
+import TeacherAIFloatButton from '@/components/TeacherAIFloatButton.vue'
 
 const loading = ref(false)
 const stats = ref<TeacherStats>({ totalIncome: 0, todayIncome: 0, monthIncome: 0, paidOrders: 0, studentCount: 0 })

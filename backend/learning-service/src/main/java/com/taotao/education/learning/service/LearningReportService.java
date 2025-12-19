@@ -2,6 +2,7 @@ package com.taotao.education.learning.service;
 
 import com.taotao.education.learning.dto.LearningReportQueryDTO;
 import com.taotao.education.learning.vo.LearningReportVO;
+import com.taotao.education.learning.vo.UserLearningStatsVO;
 
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,11 @@ public interface LearningReportService {
      * 生成学习报告
      */
     LearningReportVO generateLearningReport(Long userId, LearningReportQueryDTO queryDTO);
+
+    /**
+     * 获取用户学习总统计
+     */
+    UserLearningStatsVO getUserLearningStats(Long userId);
 
     /**
      * 获取学习时长趋势

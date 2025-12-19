@@ -154,6 +154,9 @@
         </template>
       </el-dialog>
     </div>
+
+    <!-- AI 助手悬浮按钮 -->
+    <TeacherAIFloatButton />
   </div>
 </template>
 
@@ -167,6 +170,7 @@ import type { CategoryTree, ChapterInfo, LessonInfo } from '@/types/course'
 import { uploadVideo, uploadCourseCover } from '@/api/file'
 import { getOrgOptions } from '@/api/user'
 import type { OrgOption } from '@/types/user'
+import TeacherAIFloatButton from '@/components/TeacherAIFloatButton.vue'
 
 const router = useRouter()
 const route = useRoute()

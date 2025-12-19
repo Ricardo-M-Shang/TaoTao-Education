@@ -68,6 +68,9 @@
         />
       </div>
     </div>
+
+    <!-- AI 助手悬浮按钮 -->
+    <TeacherAIFloatButton />
   </div>
 </template>
 
@@ -78,6 +81,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { getTeacherCourseList, publishCourse, offlineCourse } from '@/api/teacher'
 import type { CourseListItem, CourseListResult, CourseListParams } from '@/types/course'
+import TeacherAIFloatButton from '@/components/TeacherAIFloatButton.vue'
 
 const router = useRouter()
 const loading = ref(false)

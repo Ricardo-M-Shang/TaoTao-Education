@@ -41,6 +41,9 @@
         </el-form-item>
       </el-form>
     </div>
+
+    <!-- AI 助手悬浮按钮 -->
+    <TeacherAIFloatButton />
   </div>
 </template>
 
@@ -51,6 +54,7 @@ import { Camera } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { updateUserInfo } from '@/api/user'
 import { uploadAvatar } from '@/api/file'
+import TeacherAIFloatButton from '@/components/TeacherAIFloatButton.vue'
 
 const userStore = useUserStore()
 const saving = ref(false)

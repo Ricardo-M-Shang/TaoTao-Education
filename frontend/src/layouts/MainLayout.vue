@@ -10,6 +10,9 @@
         <nav class="nav">
           <router-link to="/" class="nav-item" :class="{ active: route.path === '/' }">首页</router-link>
           <router-link to="/course" class="nav-item" :class="{ active: route.path.startsWith('/course') }">课程</router-link>
+          <router-link v-if="isStudent" to="/ai/recommend" class="nav-item ai-nav" :class="{ active: route.path.startsWith('/ai') }">
+            <span class="ai-icon">✨</span>AI推荐
+          </router-link>
           <router-link v-if="isStudent" to="/study/center" class="nav-item" :class="{ active: route.path.startsWith('/study') }">学习中心</router-link>
           <router-link v-if="userStore.isLoggedIn" to="/chat" class="nav-item" :class="{ active: route.path.startsWith('/chat') }">聊天室</router-link>
           <router-link v-if="isOrg" to="/org" class="nav-item" :class="{ active: route.path.startsWith('/org') }">机构</router-link>
@@ -23,7 +26,7 @@
                 <span>{{ userStore.userInfo?.nickname || '用户' }}</span>
               </div>
               <template #dropdown>
-                <el-dropdown-menu>
+                <el-dropdown-menu class="user-dropdown-menu">
                   <el-dropdown-item command="user">个人中心</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" divided disabled>学习功能</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" command="study-center">学习中心</el-dropdown-item>
@@ -35,6 +38,8 @@
                   <el-dropdown-item v-if="isStudent" command="favorites">我的收藏</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" command="coupons">我的优惠券</el-dropdown-item>
                   <el-dropdown-item v-if="isStudent" command="statistics">学习统计</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" divided disabled>智能服务</el-dropdown-item>
+                  <el-dropdown-item v-if="isStudent" command="ai-recommend">✨ AI推荐</el-dropdown-item>
                   <el-dropdown-item divided disabled>互动功能</el-dropdown-item>
                   <el-dropdown-item command="chat">聊天室</el-dropdown-item>
                   <el-dropdown-item v-if="isTeacher" divided disabled>讲师功能</el-dropdown-item>
@@ -110,6 +115,7 @@ function handleCommand(cmd: string) {
   else if (cmd === 'coupons') router.push('/user/coupons')
   else if (cmd === 'statistics') router.push('/user/statistics')
   else if (cmd === 'chat') router.push('/chat')
+  else if (cmd === 'ai-recommend') router.push('/ai/recommend')
   else if (cmd === 't-courses') router.push('/teacher/courses')
   else if (cmd === 't-stats') router.push('/teacher/stats')
   else if (cmd === 't-profile') router.push('/teacher/profile')
@@ -119,6 +125,13 @@ function handleCommand(cmd: string) {
   else if (cmd === 'op-center') router.push('/ops')
 }
 </script>
+
+<style>
+.user-dropdown-menu {
+  max-height: 400px;
+  overflow-y: auto;
+}
+</style>
 
 <style lang="scss" scoped>
 .layout { min-height: 100vh; display: flex; flex-direction: column; }
@@ -133,6 +146,11 @@ function handleCommand(cmd: string) {
     .nav-item { padding: 6px 14px; font-size: 12px; color: var(--text-secondary); text-decoration: none; border-radius: 6px; transition: all 0.2s;
       &:hover { color: var(--primary-color); background: rgba(99,102,241,0.06); }
       &.active { color: var(--primary-color); background: rgba(99,102,241,0.1); font-weight: 500; }
+      &.ai-nav { display: flex; align-items: center; gap: 4px; background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1)); border: 1px solid rgba(102,126,234,0.2);
+        .ai-icon { font-size: 12px; }
+        &:hover { background: linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2)); border-color: rgba(102,126,234,0.3); }
+        &.active { background: linear-gradient(135deg, rgba(102,126,234,0.25), rgba(118,75,162,0.25)); border-color: rgba(102,126,234,0.4); }
+      }
     }
   }
   .user { display: flex; align-items: center; gap: 10px;

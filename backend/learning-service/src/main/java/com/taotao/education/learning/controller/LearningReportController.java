@@ -5,7 +5,7 @@ import com.taotao.education.learning.dto.LearningReportQueryDTO;
 import com.taotao.education.learning.service.LearningReportService;
 import com.taotao.education.learning.service.LearningStatsService;
 import com.taotao.education.learning.vo.LearningReportVO;
-import com.taotao.education.learning.vo.LearningStatsVO;
+import com.taotao.education.learning.vo.UserLearningStatsVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -65,8 +65,8 @@ public class LearningReportController {
 
     @Operation(summary = "获取用户学习统计")
     @GetMapping("/user-stats")
-    public Result<List<LearningStatsVO>> getUserStats(@RequestHeader("X-User-Id") Long userId) {
-        List<LearningStatsVO> stats = learningStatsService.getUserCourseStats(userId);
+    public Result<UserLearningStatsVO> getUserStats(@RequestHeader("X-User-Id") Long userId) {
+        UserLearningStatsVO stats = learningReportService.getUserLearningStats(userId);
         return Result.success(stats);
     }
 

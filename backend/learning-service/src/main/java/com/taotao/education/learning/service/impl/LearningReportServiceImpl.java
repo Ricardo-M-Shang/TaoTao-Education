@@ -7,11 +7,13 @@ import com.taotao.education.learning.service.LearningReportService;
 import com.taotao.education.learning.service.LearningStatsService;
 import com.taotao.education.learning.vo.LearningReportVO;
 import com.taotao.education.learning.vo.LearningStatsVO;
+import com.taotao.education.learning.vo.UserLearningStatsVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -59,6 +61,66 @@ public class LearningReportServiceImpl implements LearningReportService {
         report.setSuggestions(getLearningAdvice(userId));
 
         return report;
+    }
+
+    @Override
+    public UserLearningStatsVO getUserLearningStats(Long userId) {
+        UserLearningStatsVO vo = new UserLearningStatsVO();
+        vo.setUserId(userId);
+        
+        // 获取用户课程统计数据
+        List<LearningStatsVO> userCourseStats = learningStatsService.getUserCourseStats(userId);
+        
+        if (!userCourseStats.isEmpty()) {
+            // 计算总学习时长
+            int totalDuration = userCourseStats.stream()
+                .mapToInt(stats -> stats.getStudyDuration() != null ? stats.getStudyDuration() : 0)
+                .sum();
+            
+            // 计算已完成课程数
+            long completedCount = userCourseStats.stream()
+                .filter(stats -> stats.getIsFinished() != null && stats.getIsFinished())
+                .count();
+            
+            // 计算总学习天数
+            int totalStudyDays = userCourseStats.stream()
+                .mapToInt(stats -> stats.getStudyDays() != null ? stats.getStudyDays() : 0)
+                .sum();
+            
+            // 获取最近学习日期
+            Optional<LocalDateTime> lastDate = userCourseStats.stream()
+                .map(LearningStatsVO::getLastStudyTime)
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo);
+
+            vo.setTotalCourses(userCourseStats.size());
+            vo.setCompletedCourses((int) completedCount);
+            vo.setTotalStudyDuration(totalDuration);
+            vo.setTotalStudyDays(totalStudyDays);
+            vo.setAvgDailyDuration(totalStudyDays > 0 ? totalDuration / totalStudyDays : 0);
+            
+            if (lastDate.isPresent()) {
+                vo.setLastStudyDate(lastDate.get().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            }
+        } else {
+            vo.setTotalCourses(0);
+            vo.setCompletedCourses(0);
+            vo.setTotalStudyDuration(0);
+            vo.setTotalStudyDays(0);
+            vo.setAvgDailyDuration(0);
+        }
+        
+        // 设置默认值
+        vo.setLongestStreak(0);
+        vo.setCurrentStreak(0);
+        vo.setCertificatesCount(0);
+        
+        // 计算等级积分 (简单复用 calculateUserLevel 的逻辑)
+        // 积分 = (时长/60) + (完成数*100)
+        int levelScore = (vo.getTotalStudyDuration() / 60) + (vo.getCompletedCourses() * 100);
+        vo.setLevelScore(levelScore);
+        
+        return vo;
     }
 
     @Override

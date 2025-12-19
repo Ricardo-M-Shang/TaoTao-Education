@@ -27,6 +27,8 @@ import com.taotao.education.course.vo.CourseListVO;
 import com.taotao.education.course.vo.LessonVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -113,6 +115,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    @Cacheable(value = "course:detail", key = "#courseId", unless = "#result == null")
     public CourseDetailVO getDetail(Long courseId) {
         Course course = this.getById(courseId);
         if (course == null) {
@@ -176,6 +179,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    @CacheEvict(value = "course:detail", key = "#courseId")
     public void updateCourse(Long courseId, CourseUpdateDTO updateDTO) {
         Course course = this.getById(courseId);
         if (course == null) {
@@ -202,6 +206,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    @CacheEvict(value = "course:detail", key = "#courseId")
     public void publishCourse(Long courseId) {
         Course course = this.getById(courseId);
         if (course == null) {
@@ -213,6 +218,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    @CacheEvict(value = "course:detail", key = "#courseId")
     public void offlineCourse(Long courseId) {
         Course course = this.getById(courseId);
         if (course == null) {
@@ -259,6 +265,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    @CacheEvict(value = "course:detail", key = "#courseId")
     public void updateCourseStatus(Long teacherId, Long courseId, Integer status) {
         Course course = this.getById(courseId);
         if (course == null || !course.getTeacherId().equals(teacherId)) {
@@ -324,6 +331,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    @CacheEvict(value = "course:detail", key = "#courseId")
     public void approveCourse(Long orgId, Long auditorId, String auditorName, Long courseId, String remark) {
         Course course = this.getById(courseId);
         if (course == null) {
@@ -348,6 +356,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     }
 
     @Override
+    @CacheEvict(value = "course:detail", key = "#courseId")
     public void rejectCourse(Long orgId, Long auditorId, String auditorName, Long courseId, String remark) {
         Course course = this.getById(courseId);
         if (course == null) {
@@ -368,6 +377,8 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         this.updateById(course);
     }
 
+    @Override
+    @CacheEvict(value = "course:detail", key = "#courseId")
     public void offlineCourseByOrg(Long orgId, Long courseId) {
         Course course = this.getById(courseId);
         if (course == null) {

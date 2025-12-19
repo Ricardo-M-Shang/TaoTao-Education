@@ -4,6 +4,20 @@ server:
 spring:
   application:
     name: user-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        username: nacos
+        password: nacos
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+        username: nacos
+        password: nacos
+  config:
+    import:
+      - optional:nacos:user-service.yaml
   
   # 数据源配置
   datasource:
@@ -18,6 +32,12 @@ spring:
       host: localhost
       port: 6379
       database: 0
+
+  # 文件上传配置 (Spring Boot 2.x/3.x)
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
 
 # MyBatis Plus配置
 mybatis-plus:
@@ -47,17 +67,16 @@ knife4j:
   setting:
     language: zh_cn
 
-# 文件上传配置
+# 自定义文件上传路径配置
 file:
   upload-path: uploads
   access-url: http://localhost:8081/uploads
 
-spring.servlet.multipart:
-  max-file-size: 5MB
-  max-request-size: 10MB
-
 # 日志配置
 logging:
+  file:
+    name: c:/Users/shang/Desktop/实习项目/TaoTao-Education/backend/logs/user-service.log
   level:
     com.taotao.education: DEBUG
-
+    org.springframework.web: DEBUG
+    org.hibernate: INFO

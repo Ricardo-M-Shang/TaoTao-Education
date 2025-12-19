@@ -4,6 +4,20 @@ server:
 spring:
   application:
     name: order-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        username: nacos
+        password: nacos
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+        username: nacos
+        password: nacos
+  config:
+    import:
+      - optional:nacos:order-service.yaml
 
   # 统一将Long序列化为字符串，避免前端JS精度丢失导致课程ID错误（课程不存在）
   jackson:

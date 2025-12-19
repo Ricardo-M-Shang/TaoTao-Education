@@ -4,23 +4,22 @@
     <section class="hero">
       <div class="hero-bg"></div>
       <div class="hero-content">
-        <div class="hero-side left">
-          <div class="float-card c1"><span>Vue3</span></div>
-          <div class="float-card c2"><span>React</span></div>
-          <div class="float-card c3"><span>TypeScript</span></div>
-        </div>
+        <div class="float-card p1"><span>Vue3</span></div>
+        <div class="float-card p2"><span>React</span></div>
+        <div class="float-card p3"><span>TypeScript</span></div>
+        <div class="float-card p4"><span>Spring Boot</span></div>
+        <div class="float-card p5"><span>Python</span></div>
+        <div class="float-card p6"><span>MySQL</span></div>
+        
         <div class="hero-center">
           <h1><span class="gradient-text">涛涛在线教育</span></h1>
           <p class="slogan">— 让学习更简单 —</p>
           <el-button type="primary" round size="small" @click="router.push('/course')">浏览课程</el-button>
         </div>
-        <div class="hero-side right">
-          <div class="float-card c1"><span>Spring Boot</span></div>
-          <div class="float-card c2"><span>Python</span></div>
-          <div class="float-card c3"><span>MySQL</span></div>
-        </div>
       </div>
     </section>
+
+
 
     <!-- 继续学习 - 仅登录用户显示 -->
     <section class="continue-learning" v-if="userStore.isLoggedIn && recentCourses.length">
@@ -128,16 +127,28 @@
         </div>
       </div>
     </section>
+    <!-- AI 助手悬浮按钮 -->
+    <div class="ai-float-btn" @click="openAiChat" v-if="userStore.isLoggedIn">
+      <div class="btn-content">
+        <el-icon class="icon"><ChatDotRound /></el-icon>
+        <span class="text">AI助手</span>
+      </div>
+    </div>
+
+    <!-- AI 聊天窗口 -->
+    <AIChatWindow v-model="chatVisible" :role="currentRole" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { VideoPlay } from '@element-plus/icons-vue'
+import { VideoPlay, ChatDotRound } from '@element-plus/icons-vue'
 import { getCourseList, getCategoryTree } from '@/api/course'
 import { getRecentStudyRecords, RecentStudyRecord } from '@/api/study'
 import { useUserStore } from '@/stores/user'
+import { ElMessage } from 'element-plus'
+import AIChatWindow from '@/components/AIChatWindow.vue'
 import type { CourseListItem, CategoryTree } from '@/types/course'
 
 const router = useRouter()
@@ -145,11 +156,14 @@ const userStore = useUserStore()
 const loadingCourses = ref(false)
 const loadingNewCourses = ref(false)
 const loadingCategories = ref(false)
+const chatVisible = ref(false)
 const courses = ref<CourseListItem[]>([])
 const newCourses = ref<CourseListItem[]>([])
 const categories = ref<CategoryTree[]>([])
 const recentCourses = ref<RecentStudyRecord[]>([])
 const defaultCover = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400'
+
+const currentRole = computed(() => userStore.userInfo?.role || 1)
 
 const categoryIcons: Record<string, string> = {
   '前端开发': '🌐',
@@ -172,6 +186,10 @@ function getCategoryIcon(name: string): string {
 
 function goStudy(course: RecentStudyRecord) {
   router.push(`/study/${course.courseId}?lesson=${course.lessonId}`)
+}
+
+function openAiChat() {
+  chatVisible.value = true
 }
 
 async function loadCategories() {
@@ -238,32 +256,177 @@ onMounted(() => {
 .section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; &.center { justify-content: center; } h2 { font-size: 16px; font-weight: 600; } .more { font-size: 11px; color: var(--primary-color); text-decoration: none; } }
 
 .hero {
-  min-height: 160px; position: relative; display: flex; align-items: center; overflow: hidden;
+  min-height: 120px; position: relative; display: flex; align-items: center; overflow: hidden;
   .hero-bg { position: absolute; inset: 0; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
-  .hero-content { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 24px 16px; display: flex; align-items: center; justify-content: space-between; width: 100%; }
-  .hero-side { display: flex; flex-direction: column; gap: 10px; width: 120px;
-    &.left { align-items: flex-end; }
-    &.right { align-items: flex-start; }
-    .float-card { padding: 7px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; font-size: 11px; color: rgba(255,255,255,0.9); backdrop-filter: blur(4px); transition: all 0.3s; cursor: default;
-      &.c1 { animation: floatLeft 3s ease-in-out infinite; }
-      &.c2 { animation: floatLeft 3s ease-in-out infinite 0.5s; }
-      &.c3 { animation: floatLeft 3s ease-in-out infinite 1s; }
-    }
-    &.right .float-card {
-      &.c1 { animation: floatRight 3s ease-in-out infinite; }
-      &.c2 { animation: floatRight 3s ease-in-out infinite 0.5s; }
-      &.c3 { animation: floatRight 3s ease-in-out infinite 1s; }
-    }
+  .hero-content { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 16px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+  
+  .float-card { 
+    position: absolute;
+    padding: 12px 24px; 
+    background: rgba(255,255,255,0.15); 
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 30px; 
+    font-size: 15px; 
+    font-weight: 600;
+    color: #fff; 
+    backdrop-filter: blur(8px); 
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+    transition: all 0.3s; 
+    cursor: default;
+    letter-spacing: 0.5px;
+    z-index: 2;
+    
+    // 左侧气泡
+    &.p1 { top: 10%; left: 5%; animation: floatLeft 5s ease-in-out infinite; }
+    &.p2 { bottom: 15%; left: 10%; animation: floatLeft 6s ease-in-out infinite 1s; }
+    &.p3 { top: 40%; left: 15%; animation: floatLeft 7s ease-in-out infinite 2s; }
+    
+    // 右侧气泡
+    &.p4 { top: 15%; right: 8%; animation: floatRight 5s ease-in-out infinite 0.5s; }
+    &.p5 { bottom: 20%; right: 12%; animation: floatRight 6s ease-in-out infinite 1.5s; }
+    &.p6 { top: 45%; right: 5%; animation: floatRight 7s ease-in-out infinite 2.5s; }
   }
-  .hero-center { text-align: center; flex: 1; max-width: 400px;
+
+  .hero-center { text-align: center; position: relative; z-index: 3; max-width: 400px;
     h1 { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 6px; .gradient-text { background: linear-gradient(135deg, #c4b5fd, #f0abfc, #a5b4fc); background-size: 200% 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: gradientShift 4s ease infinite; } }
     .slogan { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 14px; letter-spacing: 2px; font-style: italic; }
   }
 }
 
-@keyframes floatLeft { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-6px); } }
-@keyframes floatRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+@keyframes floatLeft { 
+  0%, 100% { transform: translate(0, 0) rotate(0deg); } 
+  50% { transform: translate(-15px, -8px) rotate(-3deg); } 
+}
+@keyframes floatRight { 
+  0%, 100% { transform: translate(0, 0) rotate(0deg); } 
+  50% { transform: translate(15px, -8px) rotate(3deg); } 
+}
 @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+.ai-assistant-bar {
+  background: #fff;
+  padding: 24px 0;
+  
+  .ai-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    border: 1px solid #bae6fd;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    
+    .ai-avatar {
+      width: 48px;
+      height: 48px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .ai-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      
+      .ai-message {
+        font-size: 14px;
+        color: #0369a1;
+        line-height: 1.5;
+        
+        strong {
+          font-size: 16px;
+          color: #0c4a6e;
+        }
+      }
+      
+      .ai-input-wrapper {
+        width: 320px;
+        
+        :deep(.el-input__wrapper) {
+          border-radius: 20px;
+          box-shadow: 0 0 0 1px #bfdbfe inset;
+          
+          &.is-focus {
+            box-shadow: 0 0 0 1px #3b82f6 inset;
+          }
+        }
+        
+        :deep(.el-input-group__append) {
+          border-radius: 0 20px 20px 0;
+          background-color: #3b82f6;
+          border-color: #3b82f6;
+          color: #fff;
+          padding: 0;
+          overflow: hidden;
+          
+          button.el-button {
+            color: #fff;
+            border: none;
+            height: 100%;
+            padding: 0 20px;
+            border-radius: 0;
+            margin: 0;
+            font-weight: 500;
+            
+            &:hover { 
+              color: #fff;
+              background-color: #2563eb;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+:global(.ai-reply-dialog) {
+  width: 480px;
+  max-width: 90%;
+  border-radius: 16px;
+  background-color: #ffffff;
+  
+  .el-message-box__header {
+    padding-top: 20px;
+    .el-message-box__title { font-weight: 700; color: #1e293b; }
+  }
+  
+  .el-message-box__content {
+    padding: 10px 24px 20px;
+    color: #334155;
+    font-size: 15px;
+    line-height: 1.6;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  
+  .ai-response-content {
+    text-align: left;
+    
+    strong { color: #0369a1; font-weight: 600; }
+    ul { margin: 8px 0; padding-left: 20px; }
+    li { margin-bottom: 4px; }
+  }
+  
+  .el-button--primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-weight: 500;
+    
+    &:hover { background: #2563eb; }
+  }
+}
 
 .continue-learning {
   background: linear-gradient(135deg, #f8fafc, #f0f4ff);
@@ -432,4 +595,55 @@ onMounted(() => {
 }
 
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+.ai-float-btn {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  z-index: 1000;
+  cursor: pointer;
+  
+  .btn-content {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: #fff;
+    
+    .icon {
+      font-size: 24px;
+      margin-bottom: 2px;
+    }
+    
+    .text {
+      font-size: 10px;
+      font-weight: 500;
+    }
+    
+    &:hover {
+      transform: scale(1.1) translateY(-5px);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 2px solid rgba(59, 130, 246, 0.3);
+      animation: pulse 2s infinite;
+    }
+  }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
 </style>

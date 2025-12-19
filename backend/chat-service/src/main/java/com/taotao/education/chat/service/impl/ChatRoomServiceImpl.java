@@ -90,7 +90,8 @@ public class ChatRoomServiceImpl extends ServiceImpl<ChatRoomMapper, ChatRoom> i
             room.setCreatorId(userId);
             room.setCreatorName((String) user.get("nickname"));
             room.setCreatorAvatar((String) user.get("avatar"));
-            room.setMemberCount(1);
+            // 初始成员数为0，因为joinRoom会增加成员数
+            room.setMemberCount(0);
             room.setMaxMembers(dto.getMaxMembers());
             room.setStatus(1);
             room.setNeedApproval(dto.getNeedApproval());
@@ -114,6 +115,17 @@ public class ChatRoomServiceImpl extends ServiceImpl<ChatRoomMapper, ChatRoom> i
         ChatRoom room = this.getById(roomId);
         if (room == null) {
             throw new BusinessException("聊天室不存在");
+        }
+
+        // 校验并修复成员数量（Self-Healing）
+        Long realCount = memberMapper.selectCount(new LambdaQueryWrapper<ChatMember>()
+            .eq(ChatMember::getRoomId, roomId)
+            .gt(ChatMember::getStatus, 0)); // 状态大于0表示有效成员(1-正常, 2-禁言)
+        
+        if (room.getMemberCount() == null || room.getMemberCount() != realCount.intValue()) {
+            room.setMemberCount(realCount.intValue());
+            // 异步更新或直接更新，这里选择直接更新以确保数据一致性
+            this.updateById(room);
         }
 
         ChatRoomVO vo = convertToVO(room);

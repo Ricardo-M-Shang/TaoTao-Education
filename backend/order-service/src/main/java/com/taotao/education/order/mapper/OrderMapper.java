@@ -11,21 +11,21 @@ import org.apache.ibatis.annotations.Mapper;
 public interface OrderMapper extends BaseMapper<Order> {
 
     /**
-     * 计算讲师已支付订单金额
+     * 计算讲师总收入 (按30%计算)
      */
-    @org.apache.ibatis.annotations.Select("SELECT COALESCE(SUM(pay_amount),0) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1")
-    java.math.BigDecimal sumPaidAmountByTeacher(Long teacherId);
+    @org.apache.ibatis.annotations.Select("SELECT COALESCE(SUM(pay_amount * 0.3),0) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1")
+    java.math.BigDecimal sumTotalIncomeByTeacher(Long teacherId);
 
     /**
-     * 计算讲师今日收入
+     * 计算讲师今日收入 (按30%计算)
      */
-    @org.apache.ibatis.annotations.Select("SELECT COALESCE(SUM(pay_amount),0) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1 AND DATE(pay_time) = CURDATE()")
+    @org.apache.ibatis.annotations.Select("SELECT COALESCE(SUM(pay_amount * 0.3),0) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1 AND DATE(pay_time) = CURDATE()")
     java.math.BigDecimal sumTodayIncomeByTeacher(Long teacherId);
 
     /**
-     * 计算讲师本月收入
+     * 计算讲师本月收入 (按30%计算)
      */
-    @org.apache.ibatis.annotations.Select("SELECT COALESCE(SUM(pay_amount),0) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1 AND DATE_FORMAT(pay_time,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')")
+    @org.apache.ibatis.annotations.Select("SELECT COALESCE(SUM(pay_amount * 0.3),0) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1 AND DATE_FORMAT(pay_time,'%Y-%m') = DATE_FORMAT(CURDATE(),'%Y-%m')")
     java.math.BigDecimal sumMonthIncomeByTeacher(Long teacherId);
 
     /**
@@ -33,6 +33,12 @@ public interface OrderMapper extends BaseMapper<Order> {
      */
     @org.apache.ibatis.annotations.Select("SELECT COUNT(1) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1")
     Integer countPaidOrdersByTeacher(Long teacherId);
+
+    /**
+     * 统计讲师的学员数（去重）
+     */
+    @org.apache.ibatis.annotations.Select("SELECT COUNT(DISTINCT user_id) FROM t_order WHERE teacher_id = #{teacherId} AND status = 1")
+    Integer countStudentsByTeacher(Long teacherId);
 
     /**
      * 机构收入汇总

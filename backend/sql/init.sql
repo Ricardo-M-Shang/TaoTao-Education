@@ -618,3 +618,6 @@ CREATE TABLE t_chat_message (
     INDEX idx_sender (sender_id),
     INDEX idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天消息表';
+
+
+ALTER TABLE t_order ADD COLUMN teacher_income DECIMAL(10,2) COMMENT '讲师分成' AFTER org_income;

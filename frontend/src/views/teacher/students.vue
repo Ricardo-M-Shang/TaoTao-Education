@@ -38,6 +38,9 @@
 
       <el-empty v-if="!loading && !students.length" description="暂无学员" />
     </div>
+
+    <!-- AI 助手悬浮按钮 -->
+    <TeacherAIFloatButton />
   </div>
 </template>
 
@@ -45,6 +48,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getCourseStudents, TeacherStudent } from '@/api/teacher'
+import TeacherAIFloatButton from '@/components/TeacherAIFloatButton.vue'
 
 const route = useRoute()
 const router = useRouter()

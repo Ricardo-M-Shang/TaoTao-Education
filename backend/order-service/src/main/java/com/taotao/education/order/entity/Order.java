@@ -1,5 +1,6 @@
 package com.taotao.education.order.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.taotao.education.common.entity.BaseEntity;
 import lombok.Data;
@@ -91,6 +92,12 @@ public class Order extends BaseEntity {
      * 机构分成
      */
     private BigDecimal orgIncome;
+
+    /**
+     * 讲师分成 (虚拟字段，暂不持久化)
+     */
+    @TableField(exist = false)
+    private BigDecimal teacherIncome;
 
     /**
      * 平台分成

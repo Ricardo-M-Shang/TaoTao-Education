@@ -1,0 +1,58 @@
+server:
+  port: 9006
+  servlet:
+    context-path: /api/ai
+
+spring:
+  application:
+    name: ai-service
+
+  jackson:
+    generator:
+      write-numbers-as-strings: true
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+
+# DeepSeek AI 配置
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:sk-e84f9f6514ed4ebbb2db70dae7d87004}
+  base-url: https://api.deepseek.com
+  model: deepseek-chat
+  max-tokens: 2000
+  temperature: 0.7
+
+# 内部服务调用地址
+service:
+  course-url: http://localhost:8082
+  learning-url: http://localhost:9004
+
+# 推荐配置
+recommend:
+  cache-ttl-minutes: 30
+  default-count: 5
+  max-count: 10
+
+# Knife4j配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# 日志配置
+logging:
+  level:
+    com.taotao.education: DEBUG
+

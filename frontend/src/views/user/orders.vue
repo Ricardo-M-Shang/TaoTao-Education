@@ -24,12 +24,20 @@
                 <del v-if="o.discountAmount > 0" class="original">¥{{ o.originalPrice }}</del>
               </div>
             </div>
-            <el-tag :type="statusType(o.status)" size="small">{{ statusText(o.status) }}</el-tag>
+            <el-tag :type="statusType(o.status)" size="small" effect="plain" class="status-tag">{{ statusText(o.status) }}</el-tag>
             <div class="actions">
-              <el-button v-if="isPaidStatus(o.status)" type="success" size="small" @click="goStudy(o)">去学习</el-button>
-              <el-button v-if="isPendingStatus(o.status)" type="primary" size="small" @click="pay(o)">立即支付</el-button>
-              <el-button v-if="isPendingStatus(o.status)" size="small" @click="cancel(o)">取消订单</el-button>
-              <el-button size="small" text type="primary" @click="showDetail(o)">订单详情</el-button>
+              <template v-if="isPaidStatus(o.status)">
+                <el-button type="primary" round size="small" @click="goStudy(o)">去学习</el-button>
+                <el-button round size="small" @click="showDetail(o)">订单详情</el-button>
+              </template>
+              <template v-else-if="isPendingStatus(o.status)">
+                <el-button type="danger" round size="small" @click="pay(o)">立即支付</el-button>
+                <el-button round size="small" @click="cancel(o)">取消订单</el-button>
+                <el-button round size="small" @click="showDetail(o)">订单详情</el-button>
+              </template>
+              <template v-else>
+                <el-button round size="small" @click="showDetail(o)">订单详情</el-button>
+              </template>
             </div>
           </div>
           <!-- 待支付倒计时 -->
@@ -112,8 +120,8 @@
       
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
-        <el-button v-if="currentOrder && isPendingStatus(currentOrder.status)" type="primary" @click="pay(currentOrder!); detailVisible = false">立即支付</el-button>
-        <el-button v-if="currentOrder && isPaidStatus(currentOrder.status)" type="success" @click="goStudy(currentOrder!); detailVisible = false">去学习</el-button>
+        <el-button v-if="currentOrder && isPendingStatus(currentOrder.status)" type="danger" @click="pay(currentOrder!); detailVisible = false">立即支付</el-button>
+        <el-button v-if="currentOrder && isPaidStatus(currentOrder.status)" type="primary" @click="goStudy(currentOrder!); detailVisible = false">去学习</el-button>
       </template>
     </el-dialog>
 
@@ -411,13 +419,14 @@ h2 { font-size: 15px; margin-bottom: 12px; }
   
   .actions { 
     display: flex; 
-    flex-direction: column;
-    gap: 6px;
-    min-width: 90px;
+    align-items: center;
+    gap: 10px;
     
-    .el-button { width: 100%; }
+    .el-button { margin: 0; }
   }
 }
+
+.status-tag { margin: 0 10px; }
 
 .expire-tip {
   padding: 8px 14px;

@@ -162,8 +162,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setPayTime(LocalDateTime.now());
         BigDecimal payAmount = order.getPayAmount() == null ? BigDecimal.ZERO : order.getPayAmount();
         BigDecimal orgIncome = payAmount.multiply(new BigDecimal("0.6")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal platformIncome = payAmount.subtract(orgIncome).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal teacherIncome = payAmount.multiply(new BigDecimal("0.3")).setScale(2, RoundingMode.HALF_UP); // 讲师分成30% (逻辑计算)
+        BigDecimal platformIncome = payAmount.subtract(orgIncome).subtract(teacherIncome).setScale(2, RoundingMode.HALF_UP);
+        
         order.setOrgIncome(orgIncome);
+        // order.setTeacherIncome(teacherIncome); // 暂不持久化到数据库
         order.setPlatformIncome(platformIncome);
         this.updateById(order);
 
@@ -203,7 +206,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     public com.taotao.education.order.vo.TeacherStatsVO getTeacherStats(Long teacherId) {
         com.taotao.education.order.vo.TeacherStatsVO vo = new com.taotao.education.order.vo.TeacherStatsVO();
-        vo.setTotalIncome(baseMapper.sumPaidAmountByTeacher(teacherId));
+        vo.setTotalIncome(baseMapper.sumTotalIncomeByTeacher(teacherId));
         vo.setTodayIncome(baseMapper.sumTodayIncomeByTeacher(teacherId));
         vo.setMonthIncome(baseMapper.sumMonthIncomeByTeacher(teacherId));
         vo.setPaidOrders(baseMapper.countPaidOrdersByTeacher(teacherId));
@@ -214,7 +217,17 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                .eq(Order::getStatus, 1)
                .select(Order::getUserId)
                .groupBy(Order::getUserId);
-        vo.setStudentCount((int) this.count(wrapper));
+        
+        // 使用 list 而不是 count，因为 count 在 groupBy 下行为可能不符合预期
+        // 或者直接查询 count(distinct user_id)
+        // 这里采用 MyBatis Plus 的 count(wrapper) 会生成 select count(1) from (select ... group by ...)
+        // 如果返回多行，count() 方法可能会抛异常或者返回总行数，这里 selectOne 报错说明 MybatisPlus 内部处理 group by count 有问题
+        
+        // 修正方案：直接用 list 查询出来 size，或者手写 SQL
+        // 简单修正：查询所有符合条件的记录数（如果不考虑 group by 性能），或者手写 Mapper
+        
+        // 更好的修正：使用 mapper 自定义查询 count(distinct user_id)
+        vo.setStudentCount(baseMapper.countStudentsByTeacher(teacherId));
         return vo;
     }
 

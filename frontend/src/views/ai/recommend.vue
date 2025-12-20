@@ -132,7 +132,7 @@ const loadRecommendations = async () => {
   loading.value = true
   try {
     const res = await getRecommendations({ count: 5 })
-    if (res.code == 200) {
+    if (res.code === 200) {
       result.value = res.data
     }
   } catch (error) {

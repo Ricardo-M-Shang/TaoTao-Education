@@ -90,11 +90,7 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f3f4f6;
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   background-size: cover;
 }
 

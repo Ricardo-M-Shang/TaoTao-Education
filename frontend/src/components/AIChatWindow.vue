@@ -1,20 +1,38 @@
 <template>
   <el-dialog
     v-model="visible"
-    :title="isTeacher ? 'AI 教学助手' : 'AI 学习助手'"
-    width="500px"
+    :title="null"
+    width="480px"
     :close-on-click-modal="false"
     class="ai-chat-window"
     :class="{ 'teacher-theme': isTeacher }"
     append-to-body
     @opened="scrollToBottom"
+    :show-close="false"
   >
+    <div class="window-header">
+      <div class="header-left">
+        <div class="avatar-icon">
+          <el-icon :size="20"><Service /></el-icon>
+        </div>
+        <div class="header-info">
+          <h3>{{ isTeacher ? 'AI 教学助手' : 'AI 学习助手' }}</h3>
+          <span class="status-dot">在线</span>
+        </div>
+      </div>
+      <el-button link class="close-btn" @click="visible = false">
+        <el-icon :size="20"><Close /></el-icon>
+      </el-button>
+    </div>
+
     <div class="chat-container">
       <div class="message-list" ref="messageListRef">
         <div v-if="messages.length === 0" class="empty-state">
-          <div class="icon">🤖</div>
-          <p v-if="isTeacher">老师您好，我是您的AI教学助手！<br>需要备课灵感或教学建议吗？</p>
-          <p v-else>Hi，我是你的专属学习助手！<br>有什么我可以帮你的吗？</p>
+          <div class="empty-icon">
+            <el-icon><ChatDotRound /></el-icon>
+          </div>
+          <p v-if="isTeacher">老师您好，我是您的AI教学助手<br>需要备课灵感或教学建议吗？</p>
+          <p v-else>Hi，我是你的专属学习助手<br>有什么我可以帮你的吗？</p>
         </div>
         
         <div 
@@ -24,17 +42,21 @@
           :class="msg.role"
         >
           <div class="avatar">
-            {{ msg.role === 'user' ? (isTeacher ? '👨‍🏫' : '👤') : 'AI' }}
+            <el-icon v-if="msg.role === 'ai'"><Service /></el-icon>
+            <el-icon v-else-if="isTeacher"><Monitor /></el-icon>
+            <el-icon v-else><User /></el-icon>
           </div>
-          <div class="content">
+          <div class="content-wrapper">
             <div class="bubble" v-html="formatContent(msg.content)"></div>
             <div class="time" v-if="msg.time">{{ msg.time }}</div>
           </div>
         </div>
         
         <div v-if="loading" class="message-item ai">
-          <div class="avatar">AI</div>
-          <div class="content">
+          <div class="avatar">
+            <el-icon><Service /></el-icon>
+          </div>
+          <div class="content-wrapper">
             <div class="bubble typing">
               <span class="dot"></span><span class="dot"></span><span class="dot"></span>
             </div>
@@ -46,14 +68,23 @@
         <el-input
           v-model="inputMessage"
           type="textarea"
-          :rows="2"
-          placeholder="请输入你的问题..."
+          :rows="1"
+          :autosize="{ minRows: 1, maxRows: 4 }"
+          placeholder="输入消息..."
           resize="none"
+          class="chat-input"
           @keydown.enter.prevent="sendMessage"
         />
-        <div class="actions">
-          <el-button type="primary" size="small" @click="sendMessage" :loading="loading">发送</el-button>
-        </div>
+        <el-button 
+          type="primary" 
+          class="send-btn" 
+          @click="sendMessage" 
+          :loading="loading"
+          :disabled="!inputMessage.trim()"
+          circle
+        >
+          <el-icon><Position /></el-icon>
+        </el-button>
       </div>
     </div>
   </el-dialog>
@@ -63,6 +94,10 @@
 import { ref, watch, nextTick, computed } from 'vue'
 import { chatWithAI } from '@/api/ai'
 import { ElMessage } from 'element-plus'
+import { 
+  Service, User, Monitor, Position, 
+  Close, ChatDotRound 
+} from '@element-plus/icons-vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -122,11 +157,9 @@ function formatContent(text: string): string {
   if (!text) return ''
   let safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   safeText = safeText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  safeText = safeText.replace(/^\s*[-•]\s+(.*)$/gm, '<li>$1</li>')
-  safeText = safeText.replace(/^\s*(\d+\.)\s+(.*)$/gm, '<li>$2</li>')
-  if (safeText.includes('<li>')) {
-    safeText = safeText.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-  }
+  // 优化列表显示
+  safeText = safeText.replace(/^\s*[-•]\s+(.*)$/gm, '<div class="list-item"><span class="bullet">•</span><span>$1</span></div>')
+  safeText = safeText.replace(/^\s*(\d+\.)\s+(.*)$/gm, '<div class="list-item"><span class="num">$1</span><span>$2</span></div>')
   safeText = safeText.replace(/\n/g, '<br/>')
   return safeText
 }
@@ -169,20 +202,12 @@ async function sendMessage() {
 
 <style lang="scss">
 .ai-chat-window {
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   
   .el-dialog__header {
-    margin: 0;
-    padding: 16px 20px;
-    background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-    
-    .el-dialog__title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #0f172a;
-    }
+    display: none; // 隐藏默认头部
   }
   
   .el-dialog__body {
@@ -190,110 +215,303 @@ async function sendMessage() {
   }
 }
 
+// 教师主题
 .ai-chat-window.teacher-theme {
-  .el-button--primary {
-    background-color: #f97316;
-    border-color: #f97316;
-    &:hover { background-color: #ea580c; border-color: #ea580c; }
+  .window-header {
+    background: rgba(255, 255, 255, 0.9);
+    
+    .avatar-icon {
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    }
+  }
+  
+  .message-item.user .bubble {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+  }
+  
+  .send-btn {
+    background: linear-gradient(135deg, #f97316, #ea580c) !important;
+    border: none;
+    &:hover { opacity: 0.9; }
   }
 }
 </style>
 
 <style lang="scss" scoped>
+.window-header {
+  height: 64px;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    .avatar-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .header-info {
+      h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
+        line-height: 1.2;
+      }
+      
+      .status-dot {
+        font-size: 12px;
+        color: #10b981;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        
+        &::before {
+          content: '';
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+        }
+      }
+    }
+  }
+  
+  .close-btn {
+    color: #94a3b8;
+    &:hover { color: #64748b; background: rgba(0,0,0,0.05); }
+  }
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 500px;
-  background: #fff;
+  height: 70vh;
+  background: #f8fafc;
+  padding-top: 64px;
   
   .message-list {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
-    background: #f8fafc;
+    padding: 24px;
+    scroll-behavior: smooth;
+    
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.1);
+      border-radius: 3px;
+    }
     
     .empty-state {
       text-align: center;
-      padding-top: 60px;
+      padding-top: 80px;
       color: #94a3b8;
       
-      .icon {
-        font-size: 48px;
-        margin-bottom: 16px;
+      .empty-icon {
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        font-size: 40px;
+        color: #cbd5e1;
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.05);
       }
-      p { line-height: 1.6; }
+      
+      p {
+        font-size: 14px;
+        line-height: 1.6;
+      }
     }
     
     .message-item {
       display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 16px;
+      margin-bottom: 24px;
+      animation: slideIn 0.3s ease-out;
+      
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 18px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+      }
+      
+      .content-wrapper {
+        display: flex;
+        flex-direction: column;
+        max-width: 75%;
+        gap: 4px;
+        
+        .bubble {
+          padding: 12px 16px;
+          border-radius: 16px;
+          font-size: 14px;
+          line-height: 1.6;
+          position: relative;
+          word-break: break-word;
+          
+          :deep(.list-item) {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 4px;
+            .bullet, .num { font-weight: bold; flex-shrink: 0; }
+          }
+          
+          :deep(strong) { font-weight: 600; }
+        }
+        
+        .time {
+          font-size: 11px;
+          color: #94a3b8;
+          margin: 0 4px;
+        }
+      }
       
       &.user {
         flex-direction: row-reverse;
         
-        .avatar { background: #dbeafe; color: #2563eb; }
-        .content {
+        .avatar {
+          background: #3b82f6;
+          color: white;
+          border: none;
+        }
+        
+        .content-wrapper {
           align-items: flex-end;
+          
           .bubble {
-            background: #3b82f6;
-            color: #fff;
-            border-radius: 12px 12px 0 12px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border-radius: 16px 16px 4px 16px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
           }
         }
       }
       
       &.ai {
-        .avatar { background: #fff; color: #3b82f6; border: 1px solid #e2e8f0; }
-        .content {
+        .content-wrapper {
           align-items: flex-start;
+          
           .bubble {
-            background: #fff;
-            color: #334155;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px 12px 12px 0;
+            background: white;
+            color: #1e293b;
+            border-radius: 4px 16px 16px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(226, 232, 240, 0.6);
           }
         }
       }
     }
-
-    // 教师主题样式覆盖
   }
   
   .input-area {
-    padding: 16px;
-    background: #fff;
-    border-top: 1px solid #e2e8f0;
+    padding: 16px 20px;
+    background: white;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
     
-    :deep(.el-textarea__inner) {
-      box-shadow: none;
-      background: #f8fafc;
-      padding: 10px;
-      border-radius: 8px;
-      
-      &:focus { background: #fff; box-shadow: 0 0 0 1px #3b82f6 inset; }
+    .chat-input {
+      :deep(.el-textarea__inner) {
+        background: #f8fafc;
+        border: none;
+        box-shadow: none;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
+        
+        &:focus {
+          background: white;
+          box-shadow: 0 0 0 2px #e2e8f0 inset;
+        }
+      }
     }
     
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 8px;
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      padding: 0;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border: none;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      transition: all 0.2s;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+      }
+      
+      &:active { transform: translateY(0); }
+      
+      &:disabled {
+        background: #e2e8f0;
+        box-shadow: none;
+        transform: none;
+        cursor: not-allowed;
+      }
     }
   }
 }
 
-// 提升到全局或父级选择器处理教师主题
-.ai-chat-window.teacher-theme {
-  .message-item.user {
-    .avatar { background: #ffedd5 !important; color: #ea580c !important; }
-    .content .bubble { background: #f97316 !important; }
+.typing {
+  display: flex;
+  gap: 4px;
+  padding: 16px 20px !important;
+  
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: #cbd5e1;
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out;
+    
+    &:nth-child(1) { animation-delay: -0.32s; }
+    &:nth-child(2) { animation-delay: -0.16s; }
   }
-  .message-item.ai {
-    .avatar { color: #f97316 !important; }
-  }
-  .input-area .el-textarea__inner:focus {
-    box-shadow: 0 0 0 1px #f97316 inset !important;
-  }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes bounce {

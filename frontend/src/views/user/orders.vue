@@ -1,70 +1,82 @@
 <template>
-  <div class="orders-page">
+  <div class="user-center">
     <div class="container">
-      <h2>我的订单</h2>
-      <el-tabs v-model="activeTab" @tab-change="load">
-        <el-tab-pane label="全部" name="all" />
-        <el-tab-pane label="待支付" name="pending" />
-        <el-tab-pane label="已支付" name="paid" />
-        <el-tab-pane label="已取消" name="cancelled" />
-      </el-tabs>
-      <div class="list" v-loading="loading">
-        <div v-for="o in orders" :key="o.id" class="item">
-          <div class="top">
-            <span class="order-no">订单号：{{ o.orderNo }}</span>
-            <span class="create-time">{{ formatTime(o.createTime) }}</span>
+      <UserSidebar active-menu="orders" />
+
+      <div class="main-content">
+        <div class="content-panel">
+          <div class="page-header">
+            <h2>我的订单</h2>
+            <div class="tabs-wrapper">
+              <el-tabs v-model="activeTab" @tab-change="load" class="custom-tabs">
+                <el-tab-pane label="全部" name="all" />
+                <el-tab-pane label="待支付" name="pending" />
+                <el-tab-pane label="已支付" name="paid" />
+                <el-tab-pane label="已取消" name="cancelled" />
+              </el-tabs>
+            </div>
           </div>
-          <div class="body">
-            <img :src="o.courseCover || defaultCover" @click="$router.push(`/course/${o.courseId}`)" />
-            <div class="info">
-              <h4 @click="$router.push(`/course/${o.courseId}`)">{{ o.courseTitle }}</h4>
-              <p>{{ o.teacherName }}</p>
-              <div class="price-info">
-                <span class="pay-amount">¥{{ o.payAmount }}</span>
-                <del v-if="o.discountAmount > 0" class="original">¥{{ o.originalPrice }}</del>
+
+          <div class="list" v-loading="loading">
+            <div v-for="o in orders" :key="o.id" class="item">
+              <div class="top">
+                <span class="order-no">订单号：{{ o.orderNo }}</span>
+                <span class="create-time">{{ formatTime(o.createTime) }}</span>
+              </div>
+              <div class="body">
+                <img :src="o.courseCover || defaultCover" @click="$router.push(`/course/${o.courseId}`)" />
+                <div class="info">
+                  <h4 @click="$router.push(`/course/${o.courseId}`)">{{ o.courseTitle }}</h4>
+                  <p>{{ o.teacherName }}</p>
+                  <div class="price-info">
+                    <span class="pay-amount">¥{{ o.payAmount }}</span>
+                    <del v-if="o.discountAmount > 0" class="original">¥{{ o.originalPrice }}</del>
+                  </div>
+                </div>
+                <el-tag :type="statusType(o.status)" size="default" effect="light" class="status-tag">{{ statusText(o.status) }}</el-tag>
+                <div class="actions">
+                  <template v-if="isPaidStatus(o.status)">
+                    <el-button type="primary" round size="small" @click="goStudy(o)">去学习</el-button>
+                    <el-button round size="small" @click="showDetail(o)">详情</el-button>
+                  </template>
+                  <template v-else-if="isPendingStatus(o.status)">
+                    <el-button type="danger" round size="small" @click="pay(o)">支付</el-button>
+                    <el-button round size="small" @click="cancel(o)">取消</el-button>
+                    <el-button round size="small" @click="showDetail(o)">详情</el-button>
+                  </template>
+                  <template v-else>
+                    <el-button round size="small" @click="showDetail(o)">查看详情</el-button>
+                  </template>
+                </div>
+              </div>
+              <!-- 待支付倒计时 -->
+              <div class="expire-tip" v-if="o.status === 0 && o.expireTime">
+                <el-icon><Clock /></el-icon>
+                <span>请在 {{ getExpireCountdown(o.expireTime) }} 内完成支付，超时订单将自动取消</span>
               </div>
             </div>
-            <el-tag :type="statusType(o.status)" size="small" effect="plain" class="status-tag">{{ statusText(o.status) }}</el-tag>
-            <div class="actions">
-              <template v-if="isPaidStatus(o.status)">
-                <el-button type="primary" round size="small" @click="goStudy(o)">去学习</el-button>
-                <el-button round size="small" @click="showDetail(o)">订单详情</el-button>
-              </template>
-              <template v-else-if="isPendingStatus(o.status)">
-                <el-button type="danger" round size="small" @click="pay(o)">立即支付</el-button>
-                <el-button round size="small" @click="cancel(o)">取消订单</el-button>
-                <el-button round size="small" @click="showDetail(o)">订单详情</el-button>
-              </template>
-              <template v-else>
-                <el-button round size="small" @click="showDetail(o)">订单详情</el-button>
-              </template>
-            </div>
+            <el-empty v-if="!loading && !orders.length" description="暂无订单">
+              <el-button type="primary" size="default" @click="$router.push('/course')">去选课</el-button>
+            </el-empty>
           </div>
-          <!-- 待支付倒计时 -->
-          <div class="expire-tip" v-if="o.status === 0 && o.expireTime">
-            <el-icon><Clock /></el-icon>
-            <span>请在 {{ getExpireCountdown(o.expireTime) }} 内完成支付，超时订单将自动取消</span>
+          
+          <!-- 分页 -->
+          <div class="pager" v-if="total > pageSize">
+            <el-pagination
+              v-model:current-page="pageNum"
+              :page-size="pageSize"
+              :total="total"
+              layout="prev, pager, next"
+              @current-change="load"
+              background
+            />
           </div>
         </div>
-        <el-empty v-if="!loading && !orders.length" description="暂无订单">
-          <el-button type="primary" size="small" @click="$router.push('/course')">去选课</el-button>
-        </el-empty>
-      </div>
-      
-      <!-- 分页 -->
-      <div class="pager" v-if="total > pageSize">
-        <el-pagination
-          v-model:current-page="pageNum"
-          :page-size="pageSize"
-          :total="total"
-          layout="prev, pager, next"
-          @current-change="load"
-        />
       </div>
     </div>
 
     <!-- 订单详情弹窗 -->
-    <el-dialog v-model="detailVisible" title="订单详情" width="500px" :close-on-click-modal="false">
+    <el-dialog v-model="detailVisible" title="订单详情" width="500px" :close-on-click-modal="false" align-center>
       <div class="order-detail" v-if="currentOrder">
         <div class="detail-section">
           <h4>订单信息</h4>
@@ -126,7 +138,7 @@
     </el-dialog>
 
     <!-- 支付方式选择弹窗 -->
-    <el-dialog v-model="paymentVisible" title="选择支付方式" width="450px" :close-on-click-modal="false">
+    <el-dialog v-model="paymentVisible" title="选择支付方式" width="450px" :close-on-click-modal="false" align-center>
       <div class="payment-dialog" v-if="orderToPay">
         <div class="pay-info">
           <div class="pay-amount-label">应付金额</div>
@@ -199,6 +211,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Clock, CircleCheck } from '@element-plus/icons-vue'
 import { getOrderList, cancelOrder, payOrder } from '@/api/order'
 import type { OrderInfo } from '@/types/order'
+import UserSidebar from './components/UserSidebar.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -332,57 +345,117 @@ onMounted(load)
 </script>
 
 <style lang="scss" scoped>
-.orders-page { background: var(--bg-color); min-height: calc(100vh - 90px); padding: 20px 0; }
-.container { max-width: 900px; margin: 0 auto; padding: 16px; background: #fff; border-radius: 10px; }
-h2 { font-size: 15px; margin-bottom: 12px; }
+.user-center {
+  background: #f8fafc;
+  min-height: calc(100vh - 60px);
+  padding: 24px 0;
+  color: #334155;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 24px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-panel {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  min-height: 500px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.page-header {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  
+  h2 { font-size: 20px; font-weight: 600; color: #0f172a; }
+  
+  .tabs-wrapper {
+    :deep(.el-tabs__header) {
+      margin: 0;
+    }
+    
+    :deep(.el-tabs__nav-wrap::after) {
+      height: 1px;
+      background-color: #f1f5f9;
+    }
+    
+    :deep(.el-tabs__item) {
+      font-size: 14px;
+      color: #64748b;
+      
+      &.is-active {
+        color: var(--el-color-primary);
+        font-weight: 600;
+      }
+    }
+  }
+}
 
 .item { 
-  border: 1px solid #eee; 
-  border-radius: 10px; 
-  margin-bottom: 14px; 
+  border: 1px solid #f1f5f9; 
+  border-radius: 12px; 
+  margin-bottom: 16px; 
   overflow: hidden;
-  transition: all 0.2s;
+  transition: all 0.25s;
+  background: #fff;
   
   &:hover {
-    border-color: #ddd;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    border-color: var(--el-color-primary-light-5);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
   }
 }
 
 .top { 
-  padding: 10px 14px; 
+  padding: 12px 20px; 
   background: #f8fafc; 
   display: flex; 
   justify-content: space-between; 
   align-items: center;
+  border-bottom: 1px solid #f1f5f9;
   
   .order-no {
-    font-size: 11px;
-    color: var(--text-secondary);
-    font-family: monospace;
+    font-size: 12px;
+    color: #64748b;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
   }
   
   .create-time {
-    font-size: 11px;
-    color: var(--text-muted);
+    font-size: 12px;
+    color: #94a3b8;
   }
 }
 
 .body { 
-  padding: 14px; 
+  padding: 20px; 
   display: flex; 
   align-items: center; 
-  gap: 14px;
+  gap: 20px;
   
   img { 
-    width: 100px; 
-    height: 60px; 
+    width: 140px; 
+    height: 80px; 
     object-fit: cover; 
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     
-    &:hover { transform: scale(1.02); }
+    &:hover { transform: scale(1.05); }
   }
   
   .info { 
@@ -390,29 +463,31 @@ h2 { font-size: 15px; margin-bottom: 12px; }
     min-width: 0;
     
     h4 { 
-      font-size: 13px; 
-      margin-bottom: 4px;
+      font-size: 15px; 
+      font-weight: 600;
+      margin-bottom: 6px;
       cursor: pointer;
+      color: #0f172a;
       
-      &:hover { color: var(--primary-color); }
+      &:hover { color: var(--el-color-primary); }
     }
     
-    p { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+    p { font-size: 13px; color: #64748b; margin-bottom: 12px; }
     
     .price-info {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       
       .pay-amount {
-        font-size: 15px;
+        font-size: 18px;
         font-weight: 700;
         color: #ef4444;
       }
       
       .original {
-        font-size: 11px;
-        color: #999;
+        font-size: 12px;
+        color: #94a3b8;
       }
     }
   }
@@ -421,41 +496,44 @@ h2 { font-size: 15px; margin-bottom: 12px; }
     display: flex; 
     align-items: center;
     gap: 10px;
-    
-    .el-button { margin: 0; }
   }
 }
 
-.status-tag { margin: 0 10px; }
+.status-tag { margin: 0 16px; font-weight: 500; }
 
 .expire-tip {
-  padding: 8px 14px;
+  padding: 10px 20px;
   background: #fff7ed;
-  border-top: 1px solid #fed7aa;
+  border-top: 1px solid #ffedd5;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: 12px;
   color: #c2410c;
   
-  .el-icon { font-size: 14px; }
+  .el-icon { font-size: 16px; }
 }
 
-.pager { margin-top: 20px; display: flex; justify-content: center; }
+.pager { 
+  margin-top: 30px; 
+  display: flex; 
+  justify-content: center; 
+}
 
 // 订单详情弹窗样式
 .order-detail {
   .detail-section {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     
     &:last-child { margin-bottom: 0; }
     
     h4 {
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       margin-bottom: 12px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid #f1f5f9;
+      color: #0f172a;
     }
   }
   
@@ -466,35 +544,36 @@ h2 { font-size: 15px; margin-bottom: 12px; }
     padding: 8px 0;
     
     .label {
-      font-size: 12px;
-      color: var(--text-muted);
+      font-size: 13px;
+      color: #64748b;
     }
     
     .value {
-      font-size: 12px;
-      color: var(--text-primary);
+      font-size: 13px;
+      color: #0f172a;
       
       &.discount { color: #10b981; }
-      &.pay-amount { font-size: 16px; font-weight: 700; color: #ef4444; }
+      &.pay-amount { font-size: 18px; font-weight: 700; color: #ef4444; }
     }
     
     &.total {
-      padding-top: 12px;
+      padding-top: 16px;
       margin-top: 8px;
-      border-top: 1px dashed #e0e0e0;
+      border-top: 1px dashed #e2e8f0;
     }
   }
   
   .course-info {
     display: flex;
-    gap: 12px;
-    padding: 12px;
+    gap: 16px;
+    padding: 16px;
     background: #f8fafc;
-    border-radius: 8px;
+    border-radius: 12px;
+    border: 1px solid #f1f5f9;
     
     img {
-      width: 80px;
-      height: 50px;
+      width: 100px;
+      height: 60px;
       object-fit: cover;
       border-radius: 6px;
     }
@@ -503,14 +582,15 @@ h2 { font-size: 15px; margin-bottom: 12px; }
       flex: 1;
       
       h5 {
-        font-size: 13px;
-        font-weight: 500;
-        margin-bottom: 4px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #0f172a;
       }
       
       p {
-        font-size: 11px;
-        color: var(--text-muted);
+        font-size: 12px;
+        color: #64748b;
       }
     }
   }
@@ -520,27 +600,32 @@ h2 { font-size: 15px; margin-bottom: 12px; }
 .payment-dialog {
   .pay-info {
     text-align: center;
-    padding: 20px 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
-    margin-bottom: 20px;
+    padding: 24px 0;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
     color: #fff;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
     
     .pay-amount-label {
-      font-size: 12px;
+      font-size: 13px;
       opacity: 0.9;
       margin-bottom: 8px;
     }
     
     .pay-amount-value {
-      font-size: 32px;
+      font-size: 36px;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
     
     .pay-course {
       font-size: 13px;
       opacity: 0.85;
+      padding: 0 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
   
@@ -551,22 +636,22 @@ h2 { font-size: 15px; margin-bottom: 12px; }
   .payment-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     padding: 16px;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
+    border: 2px solid #f1f5f9;
+    border-radius: 12px;
     margin-bottom: 12px;
     cursor: pointer;
     transition: all 0.2s;
     
     &:hover {
-      border-color: #d1d5db;
-      background: #f9fafb;
+      border-color: #cbd5e1;
+      background: #f8fafc;
     }
     
     &.active {
-      border-color: #409eff;
-      background: #ecf5ff;
+      border-color: var(--el-color-primary);
+      background: var(--el-color-primary-light-9);
     }
     
     &:last-child {
@@ -580,7 +665,7 @@ h2 { font-size: 15px; margin-bottom: 12px; }
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 12px;
     
     &.alipay {
       background: #e6f7ff;
@@ -595,14 +680,15 @@ h2 { font-size: 15px; margin-bottom: 12px; }
     flex: 1;
     
     .payment-name {
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 15px;
+      font-weight: 600;
       margin-bottom: 4px;
+      color: #0f172a;
     }
     
     .payment-desc {
       font-size: 12px;
-      color: var(--text-muted);
+      color: #64748b;
     }
   }
   
@@ -617,7 +703,8 @@ h2 { font-size: 15px; margin-bottom: 12px; }
   
   .payment-tip {
     :deep(.el-alert) {
-      padding: 10px 12px;
+      padding: 12px;
+      border-radius: 8px;
       
       .el-alert__title {
         font-size: 12px;

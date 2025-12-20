@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import { request, type ApiResponse } from '@/utils/request'
 
 /**
  * 推荐课程信息
@@ -36,8 +36,12 @@ export function getRecommendations(params?: {
   count?: number
   includeLearnedCourses?: boolean
   categoryId?: number
-}) {
-  return request.get<RecommendResult>('/ai/recommend', { params })
+}): Promise<ApiResponse<RecommendResult>> {
+  return request<RecommendResult>({
+    url: '/ai/recommend',
+    method: 'get',
+    params
+  })
 }
 
 /**
@@ -47,16 +51,22 @@ export function refreshRecommendations(data?: {
   count?: number
   includeLearnedCourses?: boolean
   categoryId?: number
-}) {
-  return request.post<RecommendResult>('/ai/recommend/refresh', data)
+}): Promise<ApiResponse<RecommendResult>> {
+  return request<RecommendResult>({
+    url: '/ai/recommend/refresh',
+    method: 'post',
+    data
+  })
 }
 
 /**
  * 获取热门推荐
  */
-export function getPopularRecommendations(count?: number) {
-  return request.get<RecommendResult>('/ai/recommend/popular', { 
-    params: { count } 
+export function getPopularRecommendations(count?: number): Promise<ApiResponse<RecommendResult>> {
+  return request<RecommendResult>({
+    url: '/ai/recommend/popular',
+    method: 'get',
+    params: { count }
   })
 }
 
@@ -78,7 +88,11 @@ export interface AIChatResponse {
 /**
  * 与AI助手对话
  */
-export function chatWithAI(data: AIChatRequest) {
-  return request.post<AIChatResponse>('/ai/chat', data)
+export function chatWithAI(data: AIChatRequest): Promise<ApiResponse<AIChatResponse>> {
+  return request<AIChatResponse>({
+    url: '/ai/chat',
+    method: 'post',
+    data
+  })
 }
 

@@ -1,139 +1,153 @@
 <template>
-  <div class="user-page">
+  <div class="user-center">
     <div class="container">
-      <div class="user-header">
-        <el-avatar :size="52" :src="userStore.userInfo?.avatar || defaultAvatar" />
-        <div class="info">
-          <h2>{{ userStore.userInfo?.nickname || '用户' }}</h2>
-          <p>{{ userStore.userInfo?.signature || '这个人很懒，什么都没写~' }}</p>
-        </div>
-        <div class="header-actions">
-          <el-button size="small" round @click="$router.push('/user/coupons')">
-            <el-icon><Tickets /></el-icon>
-            我的优惠券
-          </el-button>
-          <el-button size="small" round @click="$router.push('/user/statistics')">
-            <el-icon><DataAnalysis /></el-icon>
-            学习统计
-          </el-button>
-        </div>
-      </div>
+      <!-- 左侧导航栏 -->
+      <UserSidebar :active-menu="activeMenu" @menu-select="handleMenuSelect" />
 
-      <!-- 学习概览卡片 -->
-      <div class="stat-overview">
-        <div class="stat-item" @click="$router.push('/user/courses')">
-          <div class="stat-icon courses"><el-icon><Reading /></el-icon></div>
-          <div class="stat-info">
-            <span class="stat-value">{{ stats.totalCourses }}</span>
-            <span class="stat-label">我的课程</span>
+      <!-- 右侧内容区 -->
+      <div class="main-content">
+        <!-- 顶部统计概览 -->
+        <div class="stats-row">
+          <div class="stat-card blue">
+            <div class="icon-box"><el-icon><Reading /></el-icon></div>
+            <div class="info">
+              <div class="value">{{ stats.totalCourses }}</div>
+              <div class="label">我的课程</div>
+            </div>
+          </div>
+          <div class="stat-card purple">
+            <div class="icon-box"><el-icon><Timer /></el-icon></div>
+            <div class="info">
+              <div class="value">{{ formatStudyTime(stats.totalStudyTime) }}</div>
+              <div class="label">学习时长</div>
+            </div>
+          </div>
+          <div class="stat-card orange">
+            <div class="icon-box"><el-icon><Star /></el-icon></div>
+            <div class="info">
+              <div class="value">{{ stats.favorites }}</div>
+              <div class="label">我的收藏</div>
+            </div>
+          </div>
+          <div class="stat-card green">
+            <div class="icon-box"><el-icon><Wallet /></el-icon></div>
+            <div class="info">
+              <div class="value">{{ stats.orders }}</div>
+              <div class="label">购买订单</div>
+            </div>
           </div>
         </div>
-        <div class="stat-item" @click="$router.push('/user/statistics')">
-          <div class="stat-icon study-time"><el-icon><Timer /></el-icon></div>
-          <div class="stat-info">
-            <span class="stat-value">{{ formatStudyTime(stats.totalStudyTime) }}</span>
-            <span class="stat-label">学习时长</span>
-          </div>
-        </div>
-        <div class="stat-item" @click="$router.push('/user/favorites')">
-          <div class="stat-icon favorites"><el-icon><Star /></el-icon></div>
-          <div class="stat-info">
-            <span class="stat-value">{{ stats.favorites }}</span>
-            <span class="stat-label">我的收藏</span>
-          </div>
-        </div>
-        <div class="stat-item" @click="$router.push('/user/orders')">
-          <div class="stat-icon orders"><el-icon><Tickets /></el-icon></div>
-          <div class="stat-info">
-            <span class="stat-value">{{ stats.orders }}</span>
-            <span class="stat-label">我的订单</span>
-          </div>
-        </div>
-      </div>
 
-      <div class="user-body">
-        <el-menu :default-active="activeMenu" class="menu" @select="handleMenuSelect">
-          <el-menu-item index="profile">个人资料</el-menu-item>
-          <el-menu-item index="password">修改密码</el-menu-item>
-        </el-menu>
-        <div class="content">
-          <!-- 个人资料 -->
-          <div v-if="activeMenu === 'profile'" class="section">
-            <h3>个人资料</h3>
-            <el-form :model="profileForm" label-width="70px" class="profile-form">
-              <!-- 头像上传 -->
-              <el-form-item label="头像">
-                <div class="avatar-upload">
-                  <el-upload
-                    class="avatar-uploader"
-                    :show-file-list="false"
-                    :before-upload="beforeAvatarUpload"
-                    :http-request="handleAvatarUpload"
-                  >
-                    <el-avatar :size="64" :src="profileForm.avatar || defaultAvatar" />
-                    <div class="upload-mask">
-                      <el-icon><Camera /></el-icon>
+        <!-- 内容面板 -->
+        <div class="content-panel">
+          <transition name="fade-slide" mode="out-in">
+            <!-- 个人资料 -->
+            <div v-if="activeMenu === 'profile'" key="profile" class="panel-inner">
+              <div class="panel-header">
+                <h3>个人资料</h3>
+                <p class="subtitle">管理您的个人信息和隐私设置</p>
+              </div>
+              
+              <el-form 
+                :model="profileForm" 
+                label-position="top" 
+                class="compact-form"
+              >
+                <div class="form-grid">
+                  <el-form-item label="头像" class="avatar-item">
+                    <div class="avatar-uploader-wrapper">
+                       <el-upload
+                        class="avatar-uploader"
+                        :show-file-list="false"
+                        :before-upload="beforeAvatarUpload"
+                        :http-request="handleAvatarUpload"
+                      >
+                        <el-avatar :size="72" :src="profileForm.avatar || defaultAvatar" />
+                        <div class="hover-mask"><el-icon><Camera /></el-icon></div>
+                      </el-upload>
+                      <div class="upload-tip">
+                        <p>支持 JPG, PNG 格式</p>
+                        <p>文件小于 2MB</p>
+                      </div>
                     </div>
-                  </el-upload>
-                  <span class="tip">点击更换头像，支持jpg/png，最大2MB</span>
+                  </el-form-item>
+
+                  <el-form-item label="昵称">
+                    <el-input v-model="profileForm.nickname" maxlength="20" show-word-limit placeholder="您的称呼" />
+                  </el-form-item>
+
+                  <el-form-item label="性别">
+                    <el-radio-group v-model="profileForm.gender">
+                      <el-radio-button :value="0">保密</el-radio-button>
+                      <el-radio-button :value="1">男</el-radio-button>
+                      <el-radio-button :value="2">女</el-radio-button>
+                    </el-radio-group>
+                  </el-form-item>
+
+                  <el-form-item label="邮箱">
+                    <el-input v-model="profileForm.email" placeholder="example@email.com" />
+                  </el-form-item>
+
+                  <el-form-item label="所在地区" class="full-width">
+                    <div class="region-group">
+                      <el-select v-model="profileForm.province" placeholder="省份" @change="handleProvinceChange">
+                        <el-option v-for="p in provinces" :key="p" :label="p" :value="p" />
+                      </el-select>
+                      <el-select v-model="profileForm.city" placeholder="城市">
+                        <el-option v-for="c in cities" :key="c" :label="c" :value="c" />
+                      </el-select>
+                    </div>
+                  </el-form-item>
+
+                  <el-form-item label="个性签名" class="full-width">
+                    <el-input 
+                      v-model="profileForm.signature" 
+                      type="textarea" 
+                      :rows="3" 
+                      maxlength="100" 
+                      show-word-limit
+                      placeholder="介绍一下自己..." 
+                    />
+                  </el-form-item>
                 </div>
-              </el-form-item>
 
-              <el-form-item label="昵称">
-                <el-input v-model="profileForm.nickname" placeholder="请输入昵称" maxlength="20" show-word-limit size="small" style="max-width: 220px" />
-              </el-form-item>
-
-              <el-form-item label="性别">
-                <el-radio-group v-model="profileForm.gender" size="small">
-                  <el-radio :value="0">保密</el-radio>
-                  <el-radio :value="1">男</el-radio>
-                  <el-radio :value="2">女</el-radio>
-                </el-radio-group>
-              </el-form-item>
-
-              <el-form-item label="邮箱">
-                <el-input v-model="profileForm.email" placeholder="请输入邮箱" size="small" style="max-width: 220px" />
-              </el-form-item>
-
-              <el-form-item label="地区">
-                <div class="region-select">
-                  <el-select v-model="profileForm.province" placeholder="省份" size="small" @change="handleProvinceChange">
-                    <el-option v-for="p in provinces" :key="p" :label="p" :value="p" />
-                  </el-select>
-                  <el-select v-model="profileForm.city" placeholder="城市" size="small">
-                    <el-option v-for="c in cities" :key="c" :label="c" :value="c" />
-                  </el-select>
+                <div class="form-actions">
+                  <el-button type="primary" :loading="saving" @click="saveProfile">保存更改</el-button>
                 </div>
-              </el-form-item>
+              </el-form>
+            </div>
 
-              <el-form-item label="签名">
-                <el-input v-model="profileForm.signature" type="textarea" :rows="2" placeholder="写一句话介绍自己吧" maxlength="100" show-word-limit style="max-width: 300px" />
-              </el-form-item>
+            <!-- 修改密码 -->
+            <div v-else-if="activeMenu === 'password'" key="password" class="panel-inner">
+              <div class="panel-header">
+                <h3>安全设置</h3>
+                <p class="subtitle">定期修改密码可以保护您的账号安全</p>
+              </div>
 
-              <el-form-item>
-                <el-button type="primary" size="small" :loading="saving" @click="saveProfile">保存修改</el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-
-          <!-- 修改密码 -->
-          <div v-if="activeMenu === 'password'" class="section">
-            <h3>修改密码</h3>
-            <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="70px" style="max-width: 300px">
-              <el-form-item label="原密码" prop="oldPassword">
-                <el-input v-model="pwdForm.oldPassword" type="password" show-password size="small" />
-              </el-form-item>
-              <el-form-item label="新密码" prop="newPassword">
-                <el-input v-model="pwdForm.newPassword" type="password" show-password size="small" />
-              </el-form-item>
-              <el-form-item label="确认密码" prop="confirmPassword">
-                <el-input v-model="pwdForm.confirmPassword" type="password" show-password size="small" />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" size="small" @click="changePwd">修改密码</el-button>
-              </el-form-item>
-            </el-form>
-          </div>
+              <el-form 
+                ref="pwdFormRef" 
+                :model="pwdForm" 
+                :rules="pwdRules" 
+                label-position="top"
+                class="compact-form password-form"
+              >
+                <el-form-item label="当前密码" prop="oldPassword">
+                  <el-input v-model="pwdForm.oldPassword" type="password" show-password placeholder="请输入当前密码" />
+                </el-form-item>
+                <el-form-item label="新密码" prop="newPassword">
+                  <el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="6-20位字符" />
+                </el-form-item>
+                <el-form-item label="确认新密码" prop="confirmPassword">
+                  <el-input v-model="pwdForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
+                </el-form-item>
+                
+                <div class="form-actions">
+                  <el-button type="primary" @click="changePwd">更新密码</el-button>
+                  <el-button @click="resetPwdForm">重置</el-button>
+                </div>
+              </el-form>
+            </div>
+          </transition>
         </div>
       </div>
     </div>
@@ -143,13 +157,16 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, FormInstance, FormRules, UploadRawFile } from 'element-plus'
-import { Camera, DataAnalysis, Reading, Timer, Star, Tickets } from '@element-plus/icons-vue'
+import { 
+  Camera, DataAnalysis, Reading, Timer, Star, Wallet
+} from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { updateUserInfo, changePassword } from '@/api/user'
 import { uploadAvatar } from '@/api/file'
 import { getStudyStatistics } from '@/api/study'
 import { getFavoriteList } from '@/api/favorite'
 import { getOrderList } from '@/api/order'
+import UserSidebar from './components/UserSidebar.vue'
 
 const userStore = useUserStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
@@ -298,6 +315,12 @@ async function changePwd() {
   })
 }
 
+function resetPwdForm() {
+  if (pwdFormRef.value) {
+    pwdFormRef.value.resetFields()
+  }
+}
+
 onMounted(() => {
   if (userStore.userInfo) {
     profileForm.nickname = userStore.userInfo.nickname || ''
@@ -313,112 +336,196 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.user-page { background: var(--bg-color); min-height: calc(100vh - 90px); padding: 20px 0; }
-.container { max-width: 900px; margin: 0 auto; padding: 0 16px; }
-
-.user-header {
-  background: #fff; padding: 20px; border-radius: 10px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
-  
-  .info { flex: 1; }
-  h2 { font-size: 16px; margin-bottom: 4px; }
-  p { font-size: 11px; color: var(--text-muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  
-  .header-actions {
-    .el-button {
-      .el-icon { margin-right: 4px; }
-    }
-  }
+.user-center {
+  background: #f8fafc;
+  min-height: calc(100vh - 60px);
+  padding: 24px 0;
+  color: #334155;
 }
 
-.stat-overview {
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 24px;
+}
+
+/* Sidebar Styles */
+/* Moved to UserSidebar.vue */
+
+/* Main Content Styles */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 16px;
   
-  .stat-item {
-    background: #fff;
-    border-radius: 10px;
-    padding: 16px;
+  .stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
+    gap: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: transform 0.2s;
     
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.05);
     }
     
-    .stat-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+    .icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      color: #fff;
-      
-      &.courses { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
-      &.study-time { background: linear-gradient(135deg, #3b82f6, #60a5fa); }
-      &.favorites { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
-      &.orders { background: linear-gradient(135deg, #10b981, #34d399); }
+      font-size: 24px;
+      color: white;
     }
     
-    .stat-info {
-      display: flex;
-      flex-direction: column;
-      
-      .stat-value {
+    .info {
+      .value {
         font-size: 18px;
         font-weight: 700;
-        color: var(--text-primary);
+        color: #1e293b;
+        line-height: 1.2;
       }
-      
-      .stat-label {
-        font-size: 11px;
-        color: var(--text-muted);
+      .label {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 4px;
       }
+    }
+    
+    &.blue .icon-box { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    &.purple .icon-box { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    &.orange .icon-box { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    &.green .icon-box { background: linear-gradient(135deg, #10b981, #059669); }
+  }
+}
+
+.content-panel {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  min-height: 500px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  
+  .panel-header {
+    margin-bottom: 30px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 20px;
+    
+    h3 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #94a3b8;
     }
   }
 }
 
-.user-body { display: flex; gap: 16px; }
-.menu { width: 160px; border-radius: 10px; flex-shrink: 0; :deep(.el-menu-item) { font-size: 12px; height: 40px; line-height: 40px; } }
-.content { flex: 1; background: #fff; border-radius: 10px; padding: 16px; }
-.section h3 { font-size: 13px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-
-.profile-form {
-  :deep(.el-form-item) { margin-bottom: 16px; }
-  :deep(.el-form-item__label) { font-size: 12px; }
+.compact-form {
+  max-width: 600px;
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    
+    .full-width {
+      grid-column: span 2;
+    }
+  }
+  
+  &.password-form {
+    max-width: 400px;
+  }
 }
 
-.avatar-upload {
-  display: flex; align-items: center; gap: 14px;
+.avatar-uploader-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   
   .avatar-uploader {
-    position: relative; cursor: pointer; width: 64px; height: 64px;
+    position: relative;
+    cursor: pointer;
     
     :deep(.el-upload) {
-      width: 64px; height: 64px; border-radius: 50%; overflow: hidden;
+      border-radius: 50%;
+      overflow: hidden;
+      transition: all 0.3s;
+      
+      &:hover .hover-mask {
+        opacity: 1;
+      }
     }
     
-    .upload-mask {
-      position: absolute; top: 0; left: 0; width: 64px; height: 64px; border-radius: 50%; 
-      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
-      opacity: 0; transition: opacity 0.2s; color: #fff; font-size: 18px;
+    .hover-mask {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      opacity: 0;
+      transition: opacity 0.3s;
     }
-    
-    &:hover .upload-mask { opacity: 1; }
   }
   
-  .tip { font-size: 10px; color: var(--text-muted); }
+  .upload-tip {
+    p {
+      font-size: 12px;
+      color: #94a3b8;
+      margin: 2px 0;
+    }
+  }
 }
 
-.region-select {
-  display: flex; gap: 10px;
-  :deep(.el-select) { width: 120px; }
+.region-group {
+  display: flex;
+  gap: 12px;
+  :deep(.el-select) {
+    width: 100%;
+  }
+}
+
+.form-actions {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Transitions */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

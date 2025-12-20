@@ -1,99 +1,121 @@
 <template>
-  <div class="chat-rooms">
-    <!-- 顶部Tab切换 -->
-    <div class="header">
-      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane label="我的聊天室" name="joined" />
-        <el-tab-pane label="我创建的" name="created" v-if="userRole === 2" />
-      </el-tabs>
-      <el-badge :value="pendingCount" :hidden="pendingCount === 0" class="invitation-badge">
-        <el-button type="primary" text @click="showInvitations = true">
-          <el-icon><Bell /></el-icon>
-          邀请消息
-        </el-button>
-      </el-badge>
-    </div>
-
-    <!-- 聊天室列表 -->
-    <div class="room-list" v-loading="loading">
-      <el-empty v-if="rooms.length === 0" description="暂无聊天室" />
-      
-      <div 
-        v-for="room in rooms" 
-        :key="room.id" 
-        class="room-card"
-        :class="{ 'is-pinned': room.isPinned }"
-        @click="enterRoom(room)"
-      >
-        <div class="room-avatar">
-          <el-avatar :size="56" :src="room.cover || room.creatorAvatar">
-            {{ room.name.charAt(0) }}
-          </el-avatar>
-          <el-badge v-if="room.unreadCount > 0" :value="room.unreadCount" class="unread-badge" />
-        </div>
-        
-        <div class="room-info">
-          <div class="room-header">
-            <span class="room-name">
-              <el-icon v-if="room.isPinned"><Top /></el-icon>
-              {{ room.name }}
-            </span>
-            <span class="room-time">{{ formatTime(room.latestMessageTime) }}</span>
+  <div class="chat-rooms-page">
+    <div class="container">
+      <!-- 头部区域 -->
+      <div class="page-header">
+        <div class="tabs-wrapper">
+          <div 
+            class="tab-item" 
+            :class="{ active: activeTab === 'joined' }"
+            @click="switchTab('joined')"
+          >
+            我的聊天室
           </div>
-          <div class="room-meta">
-            <span class="course-tag">
-              <el-icon><VideoCamera /></el-icon>
-              {{ room.courseTitle }}
-            </span>
-          </div>
-          <div class="room-message">
-            {{ room.latestMessage || '暂无消息' }}
+          <div 
+            v-if="userRole === 2"
+            class="tab-item" 
+            :class="{ active: activeTab === 'created' }"
+            @click="switchTab('created')"
+          >
+            我创建的
           </div>
         </div>
         
-        <div class="room-actions" @click.stop>
-          <el-dropdown trigger="click">
-            <el-button type="info" text circle>
-              <el-icon><MoreFilled /></el-icon>
+        <div class="header-actions">
+          <el-badge :value="pendingCount" :hidden="pendingCount === 0" class="notification-badge">
+            <el-button class="icon-btn" circle @click="showInvitations = true">
+              <el-icon><Bell /></el-icon>
             </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item @click="togglePin(room)">
-                  {{ room.isPinned ? '取消置顶' : '置顶' }}
-                </el-dropdown-item>
-                <el-dropdown-item v-if="!room.isCreator" @click="handleLeave(room)">
-                  退出聊天室
-                </el-dropdown-item>
-                <el-dropdown-item v-if="room.isCreator" @click="handleManage(room)">
-                  管理聊天室
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          </el-badge>
+        </div>
+      </div>
+
+      <!-- 列表区域 -->
+      <div class="room-grid" v-loading="loading">
+        <el-empty v-if="!loading && rooms.length === 0" description="暂无聊天室" />
+        
+        <div 
+          v-for="(room, index) in rooms" 
+          :key="room.id" 
+          class="room-card"
+          :class="{ 'is-pinned': room.isPinned }"
+          :style="{ animationDelay: `${index * 0.05}s` }"
+          @click="enterRoom(room)"
+        >
+          <div class="card-content">
+            <div class="avatar-wrapper">
+              <el-avatar :size="56" :src="room.cover || room.creatorAvatar" shape="square">
+                {{ room.name.charAt(0) }}
+              </el-avatar>
+              <div v-if="room.unreadCount > 0" class="unread-dot">{{ room.unreadCount > 99 ? '99+' : room.unreadCount }}</div>
+            </div>
+            
+            <div class="info-wrapper">
+              <div class="top-row">
+                <h3 class="room-name">
+                  <el-icon v-if="room.isPinned" class="pin-icon"><Top /></el-icon>
+                  {{ room.name }}
+                </h3>
+                <span class="time">{{ formatTime(room.latestMessageTime) }}</span>
+              </div>
+              
+              <div class="course-badge">
+                <el-icon><Collection /></el-icon>
+                {{ room.courseTitle }}
+              </div>
+              
+              <div class="message-preview">
+                {{ room.latestMessage || '暂无消息' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 操作菜单 -->
+          <div class="card-actions" @click.stop>
+            <el-dropdown trigger="click">
+              <div class="more-btn"><el-icon><MoreFilled /></el-icon></div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="togglePin(room)">
+                    {{ room.isPinned ? '取消置顶' : '置顶聊天' }}
+                  </el-dropdown-item>
+                  <el-dropdown-item v-if="room.isCreator" @click="handleManage(room)">
+                    管理聊天室
+                  </el-dropdown-item>
+                  <el-dropdown-item v-else @click="handleLeave(room)" divided>
+                    <span class="danger-text">退出聊天室</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 创建聊天室按钮（仅讲师） -->
-    <el-button 
-      v-if="userRole === 2" 
-      class="create-btn"
-      type="primary" 
-      circle 
-      size="large"
-      @click="showCreateDialog = true"
-    >
-      <el-icon :size="24"><Plus /></el-icon>
-    </el-button>
+    <!-- 悬浮创建按钮 -->
+    <div v-if="userRole === 2" class="fab-container">
+      <el-tooltip content="创建聊天室" placement="left">
+        <button class="fab-btn" @click="showCreateDialog = true">
+          <el-icon><Plus /></el-icon>
+        </button>
+      </el-tooltip>
+    </div>
 
-    <!-- 创建聊天室对话框 -->
-    <el-dialog v-model="showCreateDialog" title="创建聊天室" width="500px">
-      <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-width="100px">
+    <!-- 创建对话框 -->
+    <el-dialog 
+      v-model="showCreateDialog" 
+      title="创建新聊天室" 
+      width="480px"
+      class="custom-dialog"
+      align-center
+    >
+      <el-form :model="createForm" :rules="createRules" ref="createFormRef" label-position="top">
         <el-form-item label="聊天室名称" prop="name">
-          <el-input v-model="createForm.name" placeholder="请输入聊天室名称" />
+          <el-input v-model="createForm.name" placeholder="给聊天室起个好听的名字" size="large" />
         </el-form-item>
         <el-form-item label="关联课程" prop="courseId">
-          <el-select v-model="createForm.courseId" placeholder="请选择课程" style="width: 100%">
+          <el-select v-model="createForm.courseId" placeholder="选择关联的课程" style="width: 100%" size="large">
             <el-option 
               v-for="course in myCourses" 
               :key="course.id" 
@@ -103,38 +125,46 @@
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="请输入聊天室描述" />
-        </el-form-item>
-        <el-form-item label="公告">
-          <el-input v-model="createForm.announcement" type="textarea" :rows="2" placeholder="请输入聊天室公告" />
+          <el-input 
+            v-model="createForm.description" 
+            type="textarea" 
+            :rows="3" 
+            placeholder="简单介绍一下这个聊天室..." 
+            resize="none"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleCreate" :loading="creating">创建</el-button>
+        <div class="dialog-footer">
+          <el-button @click="showCreateDialog = false">取消</el-button>
+          <el-button type="primary" @click="handleCreate" :loading="creating">立即创建</el-button>
+        </div>
       </template>
     </el-dialog>
 
-    <!-- 邀请消息抽屉 -->
-    <el-drawer v-model="showInvitations" title="聊天室邀请" size="400px">
+    <!-- 邀请抽屉 -->
+    <el-drawer v-model="showInvitations" title="收到的邀请" size="380px" class="custom-drawer">
       <div class="invitation-list">
-        <el-empty v-if="invitations.length === 0" description="暂无邀请" />
+        <el-empty v-if="invitations.length === 0" description="暂无新邀请" :image-size="120" />
         
-        <div v-for="inv in invitations" :key="inv.id" class="invitation-card">
-          <div class="invitation-header">
-            <el-avatar :size="40" :src="inv.inviterAvatar">{{ inv.inviterName?.charAt(0) }}</el-avatar>
-            <div class="invitation-info">
-              <div class="inviter-name">{{ inv.inviterName }}</div>
-              <div class="invite-time">{{ formatTime(inv.createTime) }}</div>
+        <div v-for="inv in invitations" :key="inv.id" class="invitation-item">
+          <div class="inv-header">
+            <div class="inviter">
+              <el-avatar :size="32" :src="inv.inviterAvatar">{{ inv.inviterName?.charAt(0) }}</el-avatar>
+              <span class="name">{{ inv.inviterName }}</span>
+              <span class="action">邀请你加入</span>
             </div>
+            <span class="time">{{ formatTime(inv.createTime) }}</span>
           </div>
-          <div class="invitation-content">
-            邀请您加入聊天室「<strong>{{ inv.roomName }}</strong>」
-            <div v-if="inv.message" class="invite-message">{{ inv.message }}</div>
+          
+          <div class="room-preview">
+            <div class="room-icon"><el-icon><ChatDotSquare /></el-icon></div>
+            <span class="room-name">{{ inv.roomName }}</span>
           </div>
-          <div class="invitation-actions">
-            <el-button type="primary" size="small" @click="handleAccept(inv)">接受</el-button>
-            <el-button size="small" @click="handleReject(inv)">拒绝</el-button>
+          
+          <div class="inv-actions">
+            <el-button size="small" @click="handleReject(inv)">忽略</el-button>
+            <el-button type="primary" size="small" @click="handleAccept(inv)">接受邀请</el-button>
           </div>
         </div>
       </div>
@@ -146,7 +176,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { Bell, Top, VideoCamera, MoreFilled, Plus } from '@element-plus/icons-vue'
+import { Bell, Top, Collection, MoreFilled, Plus, ChatDotSquare } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import {
   getMyChatRooms,
@@ -189,7 +219,6 @@ const createRules = {
   courseId: [{ required: true, message: '请选择关联课程', trigger: 'change' }]
 }
 
-// 我的课程（讲师创建的）
 const myCourses = ref<{ id: number; title: string }[]>([])
 
 const formatTime = (time: string) => {
@@ -201,7 +230,8 @@ const formatTime = (time: string) => {
   if (diff < 60000) return '刚刚'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`
+  const isToday = date.toDateString() === now.toDateString()
+  if (isToday) return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   return date.toLocaleDateString()
 }
 
@@ -221,64 +251,40 @@ const loadRooms = async () => {
   }
 }
 
+const switchTab = (tab: string) => {
+  activeTab.value = tab
+  loadRooms()
+}
+
 const loadInvitations = async () => {
   try {
-    console.log('=== 加载邀请 ===')
-    console.log('当前用户ID:', userStore.userInfo?.id)
     const [invRes, countRes] = await Promise.all([
       getPendingInvitations(),
       getPendingInvitationCount()
     ])
-    console.log('邀请列表响应:', invRes)
-    console.log('邀请数量响应:', countRes)
-    if (invRes.code == 200) {
-      invitations.value = invRes.data || []
-      console.log('待处理邀请:', invitations.value)
-    }
-    if (countRes.code == 200) {
-      pendingCount.value = Number(countRes.data) || 0
-      console.log('待处理数量:', pendingCount.value)
-    }
+    if (invRes.code == 200) invitations.value = invRes.data || []
+    if (countRes.code == 200) pendingCount.value = Number(countRes.data) || 0
   } catch (error) {
-    console.error('加载邀请失败:', error)
+    console.error(error)
   }
 }
 
 const loadMyCourses = async () => {
-  // 角色2是讲师
-  console.log('=== loadMyCourses 开始 ===')
-  console.log('userStore.userInfo:', userStore.userInfo)
-  console.log('userRole.value:', userRole.value)
-  
-  // 无论角色如何都尝试加载（调试用）
+  if (userRole.value !== 2) return
   try {
-    console.log('正在请求 /api/course/teacher/list ...')
     const res = await fetch('/api/course/teacher/list', {
       headers: { 
         'Authorization': `Bearer ${userStore.token}`,
         'Content-Type': 'application/json'
       }
     })
-    console.log('响应状态:', res.status, res.statusText)
     const data = await res.json()
-    console.log('讲师课程列表响应:', JSON.stringify(data, null, 2))
-    // 注意：后端返回的 code 可能是字符串 "200" 或数字 200
     if (data.code == 200) {
       myCourses.value = data.data?.records || []
-      console.log('加载的课程数量:', myCourses.value.length)
-      console.log('课程列表:', myCourses.value)
-    } else {
-      console.error('获取课程失败:', data.message)
-      ElMessage.error('获取课程失败: ' + data.message)
     }
   } catch (error) {
-    console.error('加载课程失败:', error)
+    console.error(error)
   }
-  console.log('=== loadMyCourses 结束 ===')
-}
-
-const handleTabChange = () => {
-  loadRooms()
 }
 
 const enterRoom = (room: ChatRoom) => {
@@ -306,9 +312,7 @@ const handleLeave = async (room: ChatRoom) => {
     ElMessage.success('已退出聊天室')
     loadRooms()
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('操作失败')
-    }
+    if (error !== 'cancel') ElMessage.error('操作失败')
   }
 }
 
@@ -322,7 +326,6 @@ const handleCreate = async () => {
   
   creating.value = true
   try {
-    // 确保 courseId 是数字类型
     const data = {
       ...createForm.value,
       courseId: Number(createForm.value.courseId)
@@ -363,10 +366,7 @@ const handleReject = async (inv: ChatInvitation) => {
 }
 
 onMounted(async () => {
-  // 确保用户信息已加载（页面刷新后 userInfo 可能为空）
-  if (!userStore.userInfo) {
-    await userStore.fetchUserInfo()
-  }
+  if (!userStore.userInfo) await userStore.fetchUserInfo()
   loadRooms()
   loadInvitations()
   loadMyCourses()
@@ -374,177 +374,323 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.chat-rooms {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  min-height: calc(100vh - 120px);
-  position: relative;
+.chat-rooms-page {
+  min-height: calc(100vh - 60px);
+  background-color: #f3f4f6;
+  padding: 24px 0;
 }
 
-.header {
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Header & Tabs */
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.tabs-wrapper {
+  display: flex;
+  background: #fff;
+  padding: 4px;
+  border-radius: 99px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   
-  .invitation-badge {
-    :deep(.el-badge__content) {
-      top: 8px;
-      right: 8px;
+  .tab-item {
+    padding: 8px 24px;
+    border-radius: 99px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    &:hover {
+      color: #1f2937;
+    }
+    
+    &.active {
+      background: #4f46e5;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
     }
   }
 }
 
-.room-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.icon-btn {
+  border: none;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  color: #6b7280;
+  
+  &:hover {
+    color: #4f46e5;
+    background: #eef2ff;
+  }
+}
+
+/* Grid Layout */
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
 }
 
 .room-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.3s;
+  position: relative;
+  animation: slideUp 0.5s backwards;
   
   &:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
+    border-color: #e0e7ff;
+    
+    .card-actions {
+      opacity: 1;
+    }
   }
   
   &.is-pinned {
-    background: linear-gradient(135deg, #f0f9ff 0%, #fff 100%);
-    border-left: 3px solid var(--el-color-primary);
+    background: linear-gradient(145deg, #f5f3ff 0%, #fff 100%);
+    border: 1px solid #e0e7ff;
   }
-}
-
-.room-avatar {
-  position: relative;
   
-  .unread-badge {
+  .card-content {
+    padding: 20px;
+    display: flex;
+    gap: 16px;
+  }
+  
+  .avatar-wrapper {
+    position: relative;
+    
+    .el-avatar {
+      background: #e0e7ff;
+      color: #4f46e5;
+      font-size: 24px;
+      font-weight: 600;
+      border-radius: 16px;
+    }
+    
+    .unread-dot {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 99px;
+      border: 2px solid #fff;
+      font-weight: 600;
+    }
+  }
+  
+  .info-wrapper {
+    flex: 1;
+    min-width: 0;
+    
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+      
+      .room-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        margin-right: 8px;
+        
+        .pin-icon {
+          color: #f59e0b;
+          font-size: 14px;
+          vertical-align: -1px;
+        }
+      }
+      
+      .time {
+        font-size: 12px;
+        color: #9ca3af;
+        white-space: nowrap;
+      }
+    }
+    
+    .course-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: #6b7280;
+      background: #f3f4f6;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      max-width: 100%;
+      
+      .el-icon { font-size: 12px; }
+    }
+    
+    .message-preview {
+      font-size: 13px;
+      color: #6b7280;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+  
+  .card-actions {
     position: absolute;
-    top: -4px;
-    right: -4px;
+    bottom: 12px;
+    right: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    
+    .more-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: #9ca3af;
+      
+      &:hover {
+        background: #f3f4f6;
+        color: #4f46e5;
+      }
+    }
   }
 }
 
-.room-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.room-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.room-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  
-  .el-icon {
-    color: var(--el-color-primary);
-    font-size: 14px;
-  }
-}
-
-.room-time {
-  font-size: 12px;
-  color: #999;
-}
-
-.room-meta {
-  margin-bottom: 6px;
-}
-
-.course-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  color: #666;
-  background: #f5f5f5;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.room-message {
-  font-size: 13px;
-  color: #999;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.create-btn {
+/* FAB */
+.fab-container {
   position: fixed;
-  right: 40px;
   bottom: 40px;
-  width: 56px;
-  height: 56px;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+  right: 40px;
+  z-index: 99;
+  
+  .fab-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+    cursor: pointer;
+    transition: all 0.3s;
+    
+    &:hover {
+      transform: scale(1.1) rotate(90deg);
+      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.5);
+    }
+  }
 }
 
+/* Invitation List */
 .invitation-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.invitation-card {
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
-}
-
-.invitation-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.invitation-info {
-  .inviter-name {
-    font-weight: 600;
-    color: #333;
-  }
-  .invite-time {
-    font-size: 12px;
-    color: #999;
-  }
-}
-
-.invitation-content {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 12px;
+  padding: 10px 0;
   
-  .invite-message {
-    margin-top: 8px;
-    padding: 8px;
-    background: #fff;
-    border-radius: 4px;
-    font-size: 13px;
+  .invitation-item {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 16px;
+    
+    .inv-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      
+      .inviter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        
+        .name { font-weight: 600; color: #1f2937; }
+        .action { color: #6b7280; }
+      }
+      
+      .time {
+        font-size: 11px;
+        color: #9ca3af;
+      }
+    }
+    
+    .room-preview {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border: 1px solid #e5e7eb;
+      
+      .room-icon {
+        width: 32px;
+        height: 32px;
+        background: #eef2ff;
+        color: #4f46e5;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .room-name {
+        font-weight: 500;
+        color: #1f2937;
+        font-size: 14px;
+      }
+    }
+    
+    .inv-actions {
+      display: flex;
+      gap: 12px;
+      
+      .el-button {
+        flex: 1;
+      }
+    }
   }
 }
 
-.invitation-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+.danger-text { color: #ef4444; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .room-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
-

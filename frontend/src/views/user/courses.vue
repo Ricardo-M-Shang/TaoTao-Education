@@ -1,105 +1,111 @@
 <template>
-  <div class="courses-page">
+  <div class="user-center">
     <div class="container">
-      <div class="page-header">
-        <h2>我的课程</h2>
-        <div class="stats" v-if="courses.length">
-          <div class="stat-item">
-            <span class="num">{{ courses.length }}</span>
-            <span class="label">总课程</span>
-          </div>
-          <div class="stat-item">
-            <span class="num">{{ finishedCount }}</span>
-            <span class="label">已完成</span>
-          </div>
-          <div class="stat-item">
-            <span class="num">{{ learningCount }}</span>
-            <span class="label">学习中</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="filter-bar" v-if="courses.length">
-        <el-radio-group v-model="filter" size="small" @change="filterCourses">
-          <el-radio-button value="all">全部</el-radio-button>
-          <el-radio-button value="learning">学习中</el-radio-button>
-          <el-radio-button value="finished">已完成</el-radio-button>
-        </el-radio-group>
-        <el-select v-model="sortBy" size="small" placeholder="排序" style="width: 120px" @change="sortCourses">
-          <el-option label="最近学习" value="recent" />
-          <el-option label="购买时间" value="buyTime" />
-          <el-option label="学习进度" value="progress" />
-        </el-select>
-      </div>
-
-      <div class="list" v-loading="loading">
-        <el-empty v-if="!loading && !filteredCourses.length" :description="emptyText">
-          <el-button v-if="filter === 'all'" type="primary" size="small" @click="$router.push('/course')">浏览课程</el-button>
-        </el-empty>
-
-        <div v-for="c in filteredCourses" :key="c.id" class="item">
-          <div class="course-cover" @click="$router.push(`/course/${c.courseId}`)">
-            <img :src="c.courseCover || defaultCover" />
-            <div class="play-overlay">
-              <el-icon><VideoPlay /></el-icon>
-            </div>
-            <span v-if="c.isFinished" class="finished-badge">
-              <el-icon><CircleCheck /></el-icon>
-            </span>
-          </div>
-          <div class="info">
-            <h4 @click="$router.push(`/course/${c.courseId}`)">{{ c.courseTitle }}</h4>
-            <p class="teacher">
-              <el-icon><User /></el-icon>
-              {{ c.teacherName }}
-            </p>
-            <div class="progress-section">
-              <div class="progress-header">
-                <span class="progress-label">
-                  <template v-if="c.isFinished">
-                    <el-icon class="icon-success"><CircleCheck /></el-icon>
-                    学习完成
-                  </template>
-                  <template v-else>
-                    学习进度
-                  </template>
-                </span>
-                <span class="progress-value" :class="{ finished: c.isFinished }">{{ c.progress || 0 }}%</span>
+      <UserSidebar active-menu="courses" />
+      
+      <div class="main-content">
+        <div class="content-panel">
+          <div class="page-header">
+            <h2>我的课程</h2>
+            <div class="stats" v-if="courses.length">
+              <div class="stat-item">
+                <span class="num">{{ courses.length }}</span>
+                <span class="label">总课程</span>
               </div>
-              <el-progress 
-                :percentage="c.progress || 0" 
-                :stroke-width="8" 
-                :status="c.isFinished ? 'success' : ''"
-                :show-text="false"
-              />
-            </div>
-            <div class="meta">
-              <span v-if="c.lastStudyTime" class="last-study">
-                <el-icon><Clock /></el-icon>
-                {{ formatTime(c.lastStudyTime) }} 学习
-              </span>
-              <span v-else class="not-started">
-                <el-icon><Calendar /></el-icon>
-                尚未开始学习
-              </span>
+              <div class="stat-item">
+                <span class="num">{{ finishedCount }}</span>
+                <span class="label">已完成</span>
+              </div>
+              <div class="stat-item">
+                <span class="num">{{ learningCount }}</span>
+                <span class="label">学习中</span>
+              </div>
             </div>
           </div>
-          <div class="actions">
-            <el-button type="primary" round @click="goStudy(c)">
-              <el-icon><VideoPlay /></el-icon>
-              {{ getStudyButtonText(c) }}
-            </el-button>
-            <el-dropdown trigger="click" @command="handleCommand($event, c)">
-              <el-button round>
-                <el-icon><MoreFilled /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="detail">课程详情</el-dropdown-item>
-                  <el-dropdown-item command="review">评价课程</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+
+          <div class="filter-bar" v-if="courses.length">
+            <el-radio-group v-model="filter" size="default" @change="filterCourses">
+              <el-radio-button value="all">全部</el-radio-button>
+              <el-radio-button value="learning">学习中</el-radio-button>
+              <el-radio-button value="finished">已完成</el-radio-button>
+            </el-radio-group>
+            <el-select v-model="sortBy" size="default" placeholder="排序" style="width: 140px" @change="sortCourses">
+              <el-option label="最近学习" value="recent" />
+              <el-option label="购买时间" value="buyTime" />
+              <el-option label="学习进度" value="progress" />
+            </el-select>
+          </div>
+
+          <div class="list" v-loading="loading">
+            <el-empty v-if="!loading && !filteredCourses.length" :description="emptyText">
+              <el-button v-if="filter === 'all'" type="primary" @click="$router.push('/course')">浏览课程</el-button>
+            </el-empty>
+
+            <div v-for="c in filteredCourses" :key="c.id" class="item">
+              <div class="course-cover" @click="$router.push(`/course/${c.courseId}`)">
+                <img :src="c.courseCover || defaultCover" />
+                <div class="play-overlay">
+                  <el-icon><VideoPlay /></el-icon>
+                </div>
+                <span v-if="c.isFinished" class="finished-badge">
+                  <el-icon><CircleCheck /></el-icon>
+                </span>
+              </div>
+              <div class="info">
+                <h4 @click="$router.push(`/course/${c.courseId}`)">{{ c.courseTitle }}</h4>
+                <p class="teacher">
+                  <el-icon><User /></el-icon>
+                  {{ c.teacherName }}
+                </p>
+                <div class="progress-section">
+                  <div class="progress-header">
+                    <span class="progress-label">
+                      <template v-if="c.isFinished">
+                        <el-icon class="icon-success"><CircleCheck /></el-icon>
+                        学习完成
+                      </template>
+                      <template v-else>
+                        学习进度
+                      </template>
+                    </span>
+                    <span class="progress-value" :class="{ finished: c.isFinished }">{{ c.progress || 0 }}%</span>
+                  </div>
+                  <el-progress 
+                    :percentage="c.progress || 0" 
+                    :stroke-width="8" 
+                    :status="c.isFinished ? 'success' : ''"
+                    :show-text="false"
+                  />
+                </div>
+                <div class="meta">
+                  <span v-if="c.lastStudyTime" class="last-study">
+                    <el-icon><Clock /></el-icon>
+                    {{ formatTime(c.lastStudyTime) }} 学习
+                  </span>
+                  <span v-else class="not-started">
+                    <el-icon><Calendar /></el-icon>
+                    尚未开始学习
+                  </span>
+                </div>
+              </div>
+              <div class="actions">
+                <el-button type="primary" round @click="goStudy(c)">
+                  <el-icon><VideoPlay /></el-icon>
+                  {{ getStudyButtonText(c) }}
+                </el-button>
+                <el-dropdown trigger="click" @command="handleCommand($event, c)">
+                  <el-button round class="more-btn">
+                    <el-icon><MoreFilled /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="detail">课程详情</el-dropdown-item>
+                      <el-dropdown-item command="review">评价课程</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -112,6 +118,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { VideoPlay, CircleCheck, Clock, Calendar, User, MoreFilled } from '@element-plus/icons-vue'
 import { getUserCourses, UserCourseInfo } from '@/api/userCourse'
+import UserSidebar from './components/UserSidebar.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -215,29 +222,44 @@ onMounted(loadCourses)
 </script>
 
 <style lang="scss" scoped>
-.courses-page { 
-  background: var(--bg-color); 
-  min-height: calc(100vh - 90px); 
-  padding: 20px 0; 
+.user-center {
+  background: #f8fafc;
+  min-height: calc(100vh - 60px);
+  padding: 24px 0;
+  color: #334155;
 }
 
-.container { 
-  max-width: 950px; 
-  margin: 0 auto; 
-  padding: 16px; 
-  background: #fff; 
-  border-radius: 12px; 
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  gap: 24px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-panel {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  min-height: 500px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
 .page-header {
   display: flex; 
   justify-content: space-between; 
   align-items: center; 
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f1f5f9;
   
-  h2 { font-size: 18px; font-weight: 600; }
+  h2 { font-size: 20px; font-weight: 600; color: #0f172a; }
   
   .stats {
     display: flex; 
@@ -246,17 +268,18 @@ onMounted(loadCourses)
     .stat-item {
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-end;
       
       .num {
         font-size: 20px;
         font-weight: 700;
-        color: var(--primary-color);
+        color: var(--el-color-primary);
+        line-height: 1.2;
       }
       
       .label {
         font-size: 11px;
-        color: var(--text-muted);
+        color: #94a3b8;
       }
     }
   }
@@ -266,11 +289,11 @@ onMounted(loadCourses)
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   
   :deep(.el-radio-button__inner) { 
-    font-size: 12px; 
-    padding: 7px 16px; 
+    padding: 8px 20px; 
+    border-radius: 6px;
   }
 }
 
@@ -281,34 +304,36 @@ onMounted(loadCourses)
 .item { 
   display: flex; 
   align-items: center; 
-  gap: 16px; 
-  padding: 18px; 
-  border: 1px solid #eee; 
+  gap: 20px; 
+  padding: 20px; 
+  border: 1px solid #f1f5f9; 
   border-radius: 12px; 
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   transition: all 0.25s;
+  background: #fff;
   
   &:hover {
-    border-color: var(--primary-color);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
+    border-color: var(--el-color-primary-light-5);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
     transform: translateY(-2px);
   }
 }
 
 .course-cover {
   position: relative;
-  width: 180px; 
-  height: 100px; 
-  border-radius: 10px; 
+  width: 200px; 
+  height: 112px; 
+  border-radius: 8px; 
   overflow: hidden;
   cursor: pointer; 
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   
   img { 
     width: 100%; 
     height: 100%; 
     object-fit: cover; 
-    transition: transform 0.3s; 
+    transition: transform 0.5s; 
   }
   
   .play-overlay {
@@ -316,15 +341,16 @@ onMounted(loadCourses)
     top: 50%; 
     left: 50%; 
     transform: translate(-50%, -50%);
-    width: 44px; 
-    height: 44px; 
-    background: rgba(99, 102, 241, 0.9); 
+    width: 48px; 
+    height: 48px; 
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
     border-radius: 50%;
     display: flex; 
     align-items: center; 
     justify-content: center;
     color: #fff; 
-    font-size: 20px; 
+    font-size: 24px; 
     opacity: 0; 
     transition: all 0.3s;
   }
@@ -342,6 +368,7 @@ onMounted(loadCourses)
     justify-content: center;
     color: #fff;
     font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
   
   &:hover {
@@ -355,30 +382,32 @@ onMounted(loadCourses)
   min-width: 0;
   
   h4 { 
-    font-size: 15px; 
+    font-size: 16px; 
     font-weight: 600; 
-    margin-bottom: 6px; 
+    margin-bottom: 8px; 
     cursor: pointer;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: #0f172a;
     
-    &:hover { color: var(--primary-color); }
+    &:hover { color: var(--el-color-primary); }
   }
   
   .teacher { 
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 12px; 
-    color: var(--text-muted); 
-    margin-bottom: 12px;
+    font-size: 13px; 
+    color: #64748b; 
+    margin-bottom: 16px;
     
-    .el-icon { font-size: 13px; }
+    .el-icon { font-size: 14px; }
   }
   
   .progress-section {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    max-width: 300px;
     
     .progress-header {
       display: flex;
@@ -391,8 +420,8 @@ onMounted(loadCourses)
       display: flex;
       align-items: center;
       gap: 4px;
-      font-size: 11px;
-      color: var(--text-muted);
+      font-size: 12px;
+      color: #64748b;
       
       .icon-success {
         color: #10b981;
@@ -402,7 +431,7 @@ onMounted(loadCourses)
     .progress-value {
       font-size: 13px;
       font-weight: 600;
-      color: var(--primary-color);
+      color: var(--el-color-primary);
       
       &.finished {
         color: #10b981;
@@ -411,6 +440,7 @@ onMounted(loadCourses)
     
     :deep(.el-progress-bar__outer) {
       border-radius: 4px;
+      background-color: #f1f5f9;
     }
     
     :deep(.el-progress-bar__inner) {
@@ -419,19 +449,19 @@ onMounted(loadCourses)
   }
   
   .meta {
-    font-size: 11px; 
-    color: var(--text-muted);
+    font-size: 12px; 
+    color: #94a3b8;
     
     .last-study, .not-started {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       
-      .el-icon { font-size: 13px; }
+      .el-icon { font-size: 14px; }
     }
     
     .not-started {
-      color: #bbb;
+      color: #cbd5e1;
     }
   }
 }
@@ -439,13 +469,28 @@ onMounted(loadCourses)
 .item .actions {
   display: flex; 
   flex-direction: column; 
-  gap: 8px;
+  gap: 12px;
   
   .el-button {
-    width: 120px;
+    width: 130px;
+    height: 40px;
+    font-weight: 500;
     
     &.el-button--primary {
-      .el-icon { margin-right: 4px; }
+      box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3);
+      .el-icon { margin-right: 6px; }
+    }
+  }
+  
+  .more-btn {
+    width: 130px;
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    
+    &:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #334155;
     }
   }
 }

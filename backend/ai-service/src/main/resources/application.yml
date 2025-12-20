@@ -17,6 +17,10 @@ spring:
         file-extension: yaml
         username: nacos
         password: nacos
+    sentinel:
+      transport:
+        dashboard: localhost:8080
+      eager: true
   config:
     import:
       - optional:nacos:ai-service.yaml
@@ -31,6 +35,11 @@ spring:
       host: localhost
       port: 6379
       database: 0
+
+# Feign 配置
+feign:
+  sentinel:
+    enabled: true
 
 # DeepSeek AI 配置
 deepseek:

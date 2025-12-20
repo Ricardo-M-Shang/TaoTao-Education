@@ -12,14 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "service")
 public class ServiceConfig {
 
-    /**
-     * 课程服务地址
-     */
-    private String courseUrl = "http://localhost:8082";
-
-    /**
-     * 学习服务地址
-     */
-    private String learningUrl = "http://localhost:9004";
+    // 已迁移至 OpenFeign，不再需要手动配置 URL
+    // private String courseUrl = "http://localhost:8082";
+    // private String learningUrl = "http://localhost:9004";
 }
-

@@ -3,6 +3,7 @@ package com.taotao.education.course.vo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,7 +13,8 @@ import java.util.List;
  */
 @Data
 @Schema(description = "课程详情")
-public class CourseDetailVO {
+public class CourseDetailVO implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "课程ID")
     private Long id;

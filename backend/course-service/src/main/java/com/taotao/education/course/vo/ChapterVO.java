@@ -3,6 +3,7 @@ package com.taotao.education.course.vo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -10,7 +11,8 @@ import java.util.List;
  */
 @Data
 @Schema(description = "章节信息")
-public class ChapterVO {
+public class ChapterVO implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "章节ID")
     private Long id;

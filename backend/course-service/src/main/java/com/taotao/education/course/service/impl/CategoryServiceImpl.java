@@ -8,6 +8,7 @@ import com.taotao.education.course.service.CategoryService;
 import com.taotao.education.course.vo.CategoryTreeVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> implements CategoryService {
 
     @Override
+    @Cacheable(value = "course:category:tree", unless = "#result == null")
     public List<CategoryTreeVO> getCategoryTree() {
         // 获取所有启用的分类
         LambdaQueryWrapper<Category> wrapper = new LambdaQueryWrapper<>();

@@ -3,12 +3,15 @@ package com.taotao.education.course.vo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.io.Serializable;
+
 /**
  * 课时VO
  */
 @Data
 @Schema(description = "课时信息")
-public class LessonVO {
+public class LessonVO implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Schema(description = "课时ID")
     private Long id;

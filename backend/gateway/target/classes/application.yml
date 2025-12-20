@@ -4,13 +4,26 @@ server:
 spring:
   application:
     name: gateway-service
-  
   cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        username: nacos
+        password: nacos
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+        username: nacos
+        password: nacos
     gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
       routes:
         # 用户服务路由
         - id: user-service
-          uri: http://localhost:8081
+          uri: lb://user-service
           predicates:
             - Path=/api/user/**
           filters:
@@ -18,7 +31,7 @@ spring:
         
         # 课程服务路由
         - id: course-service
-          uri: http://localhost:8082
+          uri: lb://course-service
           predicates:
             - Path=/api/course/**
           filters:
@@ -26,7 +39,7 @@ spring:
         
         # 订单服务路由
         - id: order-service
-          uri: http://localhost:8083
+          uri: lb://order-service
           predicates:
             - Path=/api/order/**
           filters:
@@ -34,7 +47,7 @@ spring:
         
         # 学习服务路由
         - id: learning-service
-          uri: http://localhost:9004
+          uri: lb://learning-service
           predicates:
             - Path=/api/learning/**
           filters:
@@ -42,7 +55,7 @@ spring:
         
         # 运营统计（订单/收入）路由
         - id: ops-order-service
-          uri: http://localhost:8083
+          uri: lb://order-service
           predicates:
             - Path=/api/ops/**
           filters:
@@ -50,7 +63,7 @@ spring:
         
         # 聊天服务路由
         - id: chat-service
-          uri: http://localhost:9005
+          uri: lb://chat-service
           predicates:
             - Path=/api/chat/**
           filters:
@@ -58,13 +71,13 @@ spring:
         
         # 聊天服务WebSocket路由
         - id: chat-websocket
-          uri: ws://localhost:9005
+          uri: lb:ws://chat-service
           predicates:
             - Path=/ws/chat/**
         
         # AI服务路由
         - id: ai-service
-          uri: http://localhost:9006
+          uri: lb://ai-service
           predicates:
             - Path=/api/ai/**
           filters:
@@ -74,7 +87,20 @@ spring:
       httpclient:
         connect-timeout: 5000
         response-timeout: 30000
-  
+      
+      # 跨域配置
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+  config:
+    import:
+      - optional:nacos:gateway-service.yaml
+
   # Redis配置
   data:
     redis:
@@ -84,7 +110,8 @@ spring:
 
 # 日志配置
 logging:
+  file:
+    name: c:/Users/shang/Desktop/实习项目/TaoTao-Education/backend/logs/gateway-service.log
   level:
     org.springframework.cloud.gateway: DEBUG
     com.taotao.education.gateway: DEBUG
-

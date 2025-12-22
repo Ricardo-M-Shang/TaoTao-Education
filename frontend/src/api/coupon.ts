@@ -24,4 +24,19 @@ export function getAvailableCoupons(orderAmount: number): Promise<ApiResponse<an
   })
 }
 
+// Seckill APIs
+export function getSeckillCoupons(): Promise<ApiResponse<any[]>> {
+  return request({
+    url: '/order/seckill/list',
+    method: 'get'
+  })
+}
+
+export function doSeckill(couponId: number | string): Promise<ApiResponse<string>> {
+  return request({
+    url: `/order/seckill/${couponId}`,
+    method: 'post'
+  })
+}
+
 

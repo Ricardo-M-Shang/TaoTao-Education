@@ -10,6 +10,11 @@
       </div>
 
       <div class="cards">
+        <div class="card clickable" @click="router.push('/ops/coupons')">
+          <p class="label">营销管理</p>
+          <p class="value" style="font-size: 18px; color: #333">优惠券管理</p>
+          <p class="muted">发放 / 秒杀 / 统计</p>
+        </div>
         <div class="card">
           <p class="label">平台总收入</p>
           <p class="value">¥ {{ orderOverview.totalIncome ?? 0 }}</p>
@@ -39,9 +44,11 @@
 
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { getOpsCourseOverview, getOpsOrderOverview, getOpsOrderTrend, getOpsUserOverview } from '@/api/ops'
 
+const router = useRouter()
 const loading = ref(false)
 const orderOverview = reactive<{ totalIncome?: number; todayIncome?: number; monthIncome?: number; paidOrders?: number }>({})
 const courseOverview = reactive<{ total?: number; pending?: number; published?: number; offline?: number }>({})

@@ -21,6 +21,11 @@ public class CouponVO {
     private Integer total;
     private Integer stock;
     private Integer limitPerUser;
+    
+    @Schema(description = "抢购开始时间")
+    private LocalDateTime grabStartTime;
+    @Schema(description = "抢购结束时间")
+    private LocalDateTime grabEndTime;
 
     // 用户券状态
     private Long userCouponId;

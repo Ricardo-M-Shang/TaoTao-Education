@@ -72,6 +72,59 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void receiveSeckill(Long userId, Long couponId) {
+        // 1. Get Coupon
+        Coupon coupon = this.getById(couponId);
+        if (coupon == null) {
+            throw new BusinessException("优惠券不存在");
+        }
+
+        // 2. Duplicate Check
+        LambdaQueryWrapper<UserCoupon> checkWrapper = new LambdaQueryWrapper<>();
+        checkWrapper.eq(UserCoupon::getCouponId, couponId).eq(UserCoupon::getUserId, userId);
+        if (userCouponMapper.selectCount(checkWrapper) > 0) {
+            throw new BusinessException("已领取该优惠券");
+        }
+
+        // 3. Decrement DB Stock
+        LambdaUpdateWrapper<Coupon> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Coupon::getId, couponId)
+                .gt(Coupon::getStock, 0)
+                .setSql("stock = stock - 1");
+        boolean updated = this.update(updateWrapper);
+        if (!updated) {
+            throw new BusinessException("优惠券已领完");
+        }
+
+        // 4. Insert UserCoupon
+        UserCoupon uc = new UserCoupon();
+        uc.setCouponId(couponId);
+        uc.setUserId(userId);
+        uc.setStatus(0);
+        uc.setObtainTime(LocalDateTime.now());
+        uc.setValidFrom(coupon.getValidFrom());
+        uc.setValidTo(coupon.getValidTo());
+        userCouponMapper.insert(uc);
+    }
+
+    @Override
+    public List<CouponVO> listSeckillCoupons() {
+        LambdaQueryWrapper<Coupon> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Coupon::getStatus, 1)
+                .isNotNull(Coupon::getGrabStartTime)
+                .orderByAsc(Coupon::getGrabStartTime);
+        List<Coupon> list = this.list(wrapper);
+        return list.stream().map(c -> {
+            CouponVO vo = new CouponVO();
+            BeanUtils.copyProperties(c, vo);
+            // Need to ensure CouponVO has grabStartTime. 
+            // I should check CouponVO.
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
     public Page<CouponVO> listUserCoupons(Long userId, CouponQueryDTO queryDTO) {
         Page<UserCoupon> page = new Page<>(queryDTO.getPageNum(), queryDTO.getPageSize());
         LambdaQueryWrapper<UserCoupon> wrapper = new LambdaQueryWrapper<>();

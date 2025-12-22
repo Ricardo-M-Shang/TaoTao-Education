@@ -166,6 +166,14 @@
         <el-icon><ChatDotRound /></el-icon>
       </div>
     </div>
+    
+    <!-- 秒杀悬浮按钮 -->
+    <div class="seckill-float-btn" @click="router.push('/marketing/seckill')">
+      <div class="btn-content">
+        <el-icon><Timer /></el-icon>
+        <span class="text">抢券</span>
+      </div>
+    </div>
 
     <!-- AI 聊天窗口 -->
     <AIChatWindow v-model="chatVisible" :role="currentRole" />
@@ -178,7 +186,7 @@ import { useRouter } from 'vue-router'
 import { 
   VideoPlay, ChatDotRound, ArrowRight, User, 
   Monitor, Platform, Cpu, DataAnalysis, Brush, Connection, 
-  Aim, Medal, ChatLineRound
+  Aim, Medal, ChatLineRound, Timer
 } from '@element-plus/icons-vue'
 import { getCourseList, getCategoryTree } from '@/api/course'
 import { getRecentStudyRecords, RecentStudyRecord } from '@/api/study'
@@ -489,6 +497,17 @@ onMounted(() => {
       }
       
       .el-icon { font-size: 14px; }
+
+      &.seckill-pill {
+        border-color: #ff4d4f;
+        color: #ff4d4f;
+        background: #fff1f0;
+        
+        &:hover {
+          background: #ffccc7;
+          border-color: #ff4d4f;
+        }
+      }
     }
   }
 }
@@ -650,6 +669,38 @@ onMounted(() => {
     width: 48px; height: 48px; background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4); transition: all 0.3s;
     &:hover { transform: scale(1.1); box-shadow: 0 8px 16px rgba(79, 70, 229, 0.5); }
   }
+}
+
+/* Seckill Float Button */
+.seckill-float-btn {
+  position: fixed; bottom: 90px; right: 30px; z-index: 99; cursor: pointer;
+  animation: bounce 2s infinite;
+  
+  .btn-content {
+    width: 48px; height: 48px; 
+    background: linear-gradient(135deg, #ff4d4f, #f5222d); 
+    border-radius: 50%; 
+    display: flex; 
+    flex-direction: column;
+    align-items: center; 
+    justify-content: center; 
+    color: #fff; 
+    box-shadow: 0 4px 12px rgba(245, 34, 45, 0.4); 
+    transition: all 0.3s;
+    
+    .el-icon { font-size: 20px; margin-bottom: -2px; }
+    .text { font-size: 10px; font-weight: bold; }
+
+    &:hover { 
+      transform: scale(1.1); 
+      box-shadow: 0 8px 16px rgba(245, 34, 45, 0.5); 
+    }
+  }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 /* Responsive */

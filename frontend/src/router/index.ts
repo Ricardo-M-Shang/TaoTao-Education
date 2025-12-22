@@ -151,6 +151,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ops/index.vue'),
         meta: { title: '运营中心', requireAuth: true, role: 5 }
       },
+      {
+        path: 'ops/coupons',
+        name: 'OpsCoupons',
+        component: () => import('@/views/ops/coupon.vue'),
+        meta: { title: '优惠券管理', requireAuth: true, role: 5 }
+      },
       // 聊天室相关路由
       {
         path: 'chat',
@@ -176,6 +182,12 @@ const routes: RouteRecordRaw[] = [
         name: 'AIRecommend',
         component: () => import('@/views/ai/recommend.vue'),
         meta: { title: 'AI智能推荐' }
+      },
+      {
+        path: 'marketing/seckill',
+        name: 'Seckill',
+        component: () => import('@/views/marketing/seckill.vue'),
+        meta: { title: '限时秒杀' }
       }
     ]
   },

@@ -51,4 +51,36 @@ export function getOpsUserOverview(): Promise<ApiResponse<OpsUserOverview>> {
   })
 }
 
+// Coupon Management
+export function getCouponList(params: any): Promise<ApiResponse<any>> {
+  return request({
+    url: '/order/ops/coupon/list',
+    method: 'get',
+    params
+  })
+}
+
+export function createCoupon(data: any): Promise<ApiResponse<void>> {
+  return request({
+    url: '/order/ops/coupon/create',
+    method: 'post',
+    data
+  })
+}
+
+export function updateCouponStatus(id: number | string, status: number): Promise<ApiResponse<void>> {
+  return request({
+    url: `/order/ops/coupon/${id}/status`,
+    method: 'put',
+    params: { status }
+  })
+}
+
+export function deleteCoupon(id: number | string): Promise<ApiResponse<void>> {
+  return request({
+    url: `/order/ops/coupon/${id}`,
+    method: 'delete'
+  })
+}
+
 

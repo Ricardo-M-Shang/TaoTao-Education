@@ -38,6 +38,26 @@ spring:
       port: 6379
       database: 0
 
+  # RabbitMQ 配置
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2
+
 # MyBatis Plus配置
 mybatis-plus:
   mapper-locations: classpath:/mapper/**/*.xml

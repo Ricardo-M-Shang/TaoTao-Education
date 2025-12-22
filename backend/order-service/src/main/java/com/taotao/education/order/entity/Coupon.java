@@ -1,6 +1,7 @@
 package com.taotao.education.order.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.taotao.education.common.entity.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -24,8 +25,25 @@ public class Coupon extends BaseEntity {
     private Integer total;
     private Integer stock;
     private Integer limitPerUser;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime validFrom;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime validTo;
+    
+    /**
+     * 抢购开始时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime grabStartTime;
+    
+    /**
+     * 抢购结束时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime grabEndTime;
+
     /**
      * 1-启用 0-禁用
      */

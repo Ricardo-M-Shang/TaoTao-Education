@@ -113,5 +113,10 @@ public interface CourseService extends IService<Course> {
      * 运营端课程概览
      */
     com.taotao.education.course.vo.OpsCourseOverviewVO getOpsOverview();
+
+    /**
+     * 增加课程学习人数（内部接口）
+     */
+    void increaseStudyCount(Long courseId, Integer count);
 }
 

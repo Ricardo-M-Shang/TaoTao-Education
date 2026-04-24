@@ -1,6 +1,7 @@
 package com.taotao.education.course.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.taotao.education.common.exception.BusinessException;
@@ -30,6 +31,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -427,6 +429,23 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         offlineWrapper.eq(Course::getStatus, 3);
         vo.setOffline(this.count(offlineWrapper));
         return vo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void increaseStudyCount(Long courseId, Integer count) {
+        Course course = this.getById(courseId);
+        if (course == null) {
+            throw new BusinessException(ResultCode.COURSE_NOT_FOUND);
+        }
+        int delta = (count == null || count <= 0) ? 1 : count;
+        LambdaUpdateWrapper<Course> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Course::getId, courseId)
+                .setSql("study_count = IFNULL(study_count, 0) + " + delta);
+        boolean updated = this.update(updateWrapper);
+        if (!updated) {
+            throw new BusinessException("课程学习人数更新失败");
+        }
     }
 
     @Override

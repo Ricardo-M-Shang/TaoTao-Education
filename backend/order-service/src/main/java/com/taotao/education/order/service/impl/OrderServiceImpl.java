@@ -1,11 +1,15 @@
 package com.taotao.education.order.service.impl;
 
 import cn.hutool.core.util.IdUtil;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.taotao.education.common.exception.BusinessException;
 import com.taotao.education.common.result.ResultCode;
+import com.taotao.education.common.result.Result;
+import com.taotao.education.order.client.feign.CourseClient;
 import com.taotao.education.order.dto.OrderCreateDTO;
 import com.taotao.education.order.entity.Order;
 import com.taotao.education.order.entity.UserCourse;
@@ -19,7 +23,10 @@ import com.taotao.education.order.vo.OrderVO;
 import com.taotao.education.order.vo.OrgStatsVO;
 import com.taotao.education.order.vo.OpsOrderOverviewVO;
 import com.taotao.education.order.vo.OpsTrendVO;
+import io.seata.core.context.RootContext;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import io.seata.spring.annotation.GlobalTransactional;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,12 +41,14 @@ import java.util.stream.Collectors;
  * 订单服务实现类
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements OrderService {
 
     private final UserCourseMapper userCourseMapper;
     private final UserCouponMapper userCouponMapper;
     private final CouponService couponService;
+    private final CourseClient courseClient;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -78,6 +87,24 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    @GlobalTransactional(name = "order-create-global-tx", rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class)
+    public String createOrderWithGlobalTx(Long userId, OrderCreateDTO createDTO, boolean simulateFailure) {
+        log.info("Seata全局事务开始: xid={}, userId={}, courseId={}, simulateFailure={}",
+                RootContext.getXID(), userId, createDTO.getCourseId(), simulateFailure);
+        String orderNo = createOrder(userId, createDTO);
+        Result<Void> remoteResult = courseClient.increaseStudyCount(createDTO.getCourseId(), 1);
+        if (remoteResult == null || remoteResult.getCode() == null || remoteResult.getCode() != 200) {
+            throw new BusinessException(remoteResult == null ? "课程服务调用失败" : remoteResult.getMessage());
+        }
+        if (simulateFailure) {
+            throw new BusinessException("模拟异常：触发Seata全局事务回滚");
+        }
+        return orderNo;
+    }
+
+    @Override
+    @SentinelResource(value = "order:query:detail", blockHandler = "getOrderDetailBlockHandler")
     public OrderVO getOrderDetail(String orderNo) {
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Order::getOrderNo, orderNo);
@@ -92,7 +119,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         return vo;
     }
 
+    public OrderVO getOrderDetailBlockHandler(String orderNo, BlockException ex) {
+        throw new BusinessException("系统繁忙，请稍后重试");
+    }
+
     @Override
+    @SentinelResource(value = "order:query:user-orders", blockHandler = "getUserOrdersBlockHandler")
     public Page<OrderVO> getUserOrders(Long userId, Integer status, Integer pageNum, Integer pageSize) {
         Page<Order> page = new Page<>(pageNum, pageSize);
 
@@ -116,6 +148,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         voPage.setRecords(voList);
 
         return voPage;
+    }
+
+    public Page<OrderVO> getUserOrdersBlockHandler(Long userId, Integer status, Integer pageNum, Integer pageSize, BlockException ex) {
+        throw new BusinessException("系统繁忙，请稍后重试");
     }
 
     @Override
@@ -232,6 +268,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    @SentinelResource(value = "order:query:org-orders", blockHandler = "getOrgOrdersBlockHandler")
     public Page<OrderVO> getOrgOrders(Long orgId, Integer status, Long teacherId, Integer pageNum, Integer pageSize) {
         Page<Order> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
@@ -252,6 +289,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }).collect(Collectors.toList());
         voPage.setRecords(voList);
         return voPage;
+    }
+
+    public Page<OrderVO> getOrgOrdersBlockHandler(Long orgId, Integer status, Long teacherId, Integer pageNum, Integer pageSize, BlockException ex) {
+        throw new BusinessException("系统繁忙，请稍后重试");
     }
 
     @Override

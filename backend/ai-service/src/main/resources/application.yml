@@ -19,7 +19,7 @@ spring:
         password: nacos
     sentinel:
       transport:
-        dashboard: localhost:8080
+        dashboard: localhost:8858
       eager: true
   config:
     import:

@@ -1,5 +1,7 @@
 package com.taotao.education.ai.client;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.taotao.education.ai.config.DeepSeekConfig;
 import com.taotao.education.ai.dto.ChatMessage;
 import com.taotao.education.ai.dto.ChatRequest;
@@ -116,11 +118,18 @@ public class DeepSeekClient {
      * @param userMessage  用户消息
      * @return 响应内容
      */
+    @SentinelResource(value = "ai:deepseek:chat", blockHandler = "chatBlockHandler")
     public String chat(String systemPrompt, String userMessage) {
         return chat(List.of(
                 ChatMessage.system(systemPrompt),
                 ChatMessage.user(userMessage)
         ));
+    }
+
+    public String chatBlockHandler(String systemPrompt, String userMessage, BlockException ex) {
+        log.warn("DeepSeek 调用被熔断降级: reason={}, messageLength={}",
+                ex.getClass().getSimpleName(), userMessage == null ? 0 : userMessage.length());
+        return "系统繁忙，请稍后重试";
     }
 }
 

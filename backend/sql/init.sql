@@ -621,3 +621,24 @@ CREATE TABLE t_chat_message (
 
 
 ALTER TABLE t_order ADD COLUMN teacher_income DECIMAL(10,2) COMMENT '讲师分成' AFTER org_income;
+
+-- Seata AT 模式回滚日志表（各参与全局事务的数据源都需要）
+CREATE TABLE IF NOT EXISTS undo_log
+(
+    id            BIGINT(20)   NOT NULL AUTO_INCREMENT,
+    branch_id     BIGINT(20)   NOT NULL,
+    xid           VARCHAR(128) NOT NULL,
+    context       VARCHAR(128) NOT NULL,
+    rollback_info LONGBLOB     NOT NULL,
+    log_status    INT(11)      NOT NULL,
+    log_created   DATETIME     NOT NULL,
+    log_modified  DATETIME     NOT NULL,
+    ext           VARCHAR(100) DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_undo_log (xid, branch_id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4 COMMENT ='AT transaction mode undo table';
+
+SELECT id, study_count FROM t_course WHERE id = 3001;
+
+DELETE FROM t_user_course WHERE user_id = 1001 AND course_id = 3001;

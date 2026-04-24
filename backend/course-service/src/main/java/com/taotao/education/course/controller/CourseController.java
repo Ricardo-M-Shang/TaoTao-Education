@@ -8,6 +8,8 @@ import com.taotao.education.course.dto.CourseUpdateDTO;
 import com.taotao.education.course.service.CourseService;
 import com.taotao.education.course.vo.CourseDetailVO;
 import com.taotao.education.course.vo.CourseListVO;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +29,7 @@ public class CourseController {
 
     @Operation(summary = "分页查询课程列表")
     @GetMapping("/list")
+    @SentinelResource(value = "course:list", blockHandler = "listBlockHandler")
     public Result<Page<CourseListVO>> list(CourseQueryDTO queryDTO) {
         Page<CourseListVO> page = courseService.pageList(queryDTO);
         return Result.success(page);
@@ -34,9 +37,18 @@ public class CourseController {
 
     @Operation(summary = "获取课程详情")
     @GetMapping("/detail/{courseId}")
+    @SentinelResource(value = "course:detail", blockHandler = "detailBlockHandler")
     public Result<CourseDetailVO> detail(@PathVariable Long courseId) {
         CourseDetailVO detail = courseService.getDetail(courseId);
         return Result.success(detail);
+    }
+
+    public Result<Page<CourseListVO>> listBlockHandler(CourseQueryDTO queryDTO, BlockException ex) {
+        return Result.fail("课程列表请求过于频繁，请稍后重试");
+    }
+
+    public Result<CourseDetailVO> detailBlockHandler(Long courseId, BlockException ex) {
+        return Result.fail("课程详情请求过于频繁，请稍后重试");
     }
 
     @Operation(summary = "创建课程")

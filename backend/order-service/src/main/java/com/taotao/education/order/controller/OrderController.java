@@ -1,5 +1,7 @@
 package com.taotao.education.order.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.taotao.education.common.result.Result;
 import com.taotao.education.order.dto.OrderCreateDTO;
@@ -32,17 +34,50 @@ public class OrderController {
 
     @Operation(summary = "创建订单")
     @PostMapping("/create")
+    @SentinelResource(value = "order:create", blockHandler = "createOrderBlockHandler")
     public Result<String> createOrder(@RequestHeader("X-User-Id") Long userId,
                                       @Valid @RequestBody OrderCreateDTO createDTO) {
         String orderNo = orderService.createOrder(userId, createDTO);
         return Result.success(orderNo);
     }
 
+    @Operation(summary = "创建订单（Seata全局事务演示）")
+    @PostMapping("/create/seata")
+    public Result<String> createOrderBySeata(@RequestHeader("X-User-Id") Long userId,
+                                             @Valid @RequestBody OrderCreateDTO createDTO,
+                                             @RequestParam(defaultValue = "false") boolean simulateFailure) {
+        String orderNo = orderService.createOrderWithGlobalTx(userId, createDTO, simulateFailure);
+        return Result.success(orderNo);
+    }
+
+    public Result<String> createOrderBlockHandler(Long userId, OrderCreateDTO createDTO, BlockException ex) {
+        return Result.fail("下单请求过于频繁，请稍后重试");
+    }
+
     @Operation(summary = "获取订单详情")
     @GetMapping("/detail/{orderNo}")
-    public Result<OrderVO> getOrderDetail(@PathVariable String orderNo) {
+    @SentinelResource(value = "order:detail", blockHandler = "getOrderDetailBlockHandler")
+    public Result<OrderVO> getOrderDetail(@PathVariable String orderNo,
+                                          @RequestParam(defaultValue = "0") Long slowMs) {
+        applyOptionalSlowCall(slowMs);
         OrderVO orderVO = orderService.getOrderDetail(orderNo);
         return Result.success(orderVO);
+    }
+
+    public Result<OrderVO> getOrderDetailBlockHandler(String orderNo, BlockException ex) {
+        return Result.fail("订单详情请求过于频繁，请稍后重试");
+    }
+
+    private void applyOptionalSlowCall(Long slowMs) {
+        if (slowMs == null || slowMs <= 0) {
+            return;
+        }
+        long sleepMs = Math.min(slowMs, 5000L);
+        try {
+            Thread.sleep(sleepMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Operation(summary = "获取用户订单列表")

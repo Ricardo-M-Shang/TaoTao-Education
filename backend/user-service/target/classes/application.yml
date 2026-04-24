@@ -15,6 +15,10 @@ spring:
         file-extension: yaml
         username: nacos
         password: nacos
+    sentinel:
+      transport:
+        dashboard: localhost:8858
+      eager: true
   config:
     import:
       - optional:nacos:user-service.yaml

@@ -17,6 +17,11 @@ public interface OrderService extends IService<Order> {
     String createOrder(Long userId, OrderCreateDTO createDTO);
 
     /**
+     * Seata全局事务创建订单（跨服务）
+     */
+    String createOrderWithGlobalTx(Long userId, OrderCreateDTO createDTO, boolean simulateFailure);
+
+    /**
      * 获取订单详情
      */
     OrderVO getOrderDetail(String orderNo);

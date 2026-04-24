@@ -63,8 +63,26 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public Result<?> handleException(Exception e) {
+        BusinessException businessCause = findBusinessCause(e);
+        if (businessCause != null) {
+            log.error("业务异常(包装): {}", businessCause.getMessage());
+            return Result.fail(businessCause.getCode(), businessCause.getMessage());
+        }
         log.error("系统异常: ", e);
         return Result.fail("系统繁忙，请稍后再试");
+    }
+
+    private BusinessException findBusinessCause(Throwable throwable) {
+        Throwable current = throwable;
+        int depth = 0;
+        while (current != null && depth < 10) {
+            if (current instanceof BusinessException businessException) {
+                return businessException;
+            }
+            current = current.getCause();
+            depth++;
+        }
+        return null;
     }
 }
 

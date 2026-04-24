@@ -3,12 +3,14 @@ package com.taotao.education.order;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 
 /**
  * 订单服务启动类
  */
 @SpringBootApplication
+@EnableFeignClients
 @ComponentScan(basePackages = {"com.taotao.education.order", "com.taotao.education.common"})
 @MapperScan("com.taotao.education.order.mapper")
 public class OrderServiceApplication {

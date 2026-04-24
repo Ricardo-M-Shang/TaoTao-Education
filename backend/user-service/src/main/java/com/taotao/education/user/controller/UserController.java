@@ -1,5 +1,7 @@
 package com.taotao.education.user.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.taotao.education.common.result.Result;
 import com.taotao.education.user.dto.LoginDTO;
 import com.taotao.education.user.dto.PasswordChangeDTO;
@@ -35,9 +37,14 @@ public class UserController {
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
+    @SentinelResource(value = "user:login", blockHandler = "loginBlockHandler")
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO loginDTO) {
         LoginVO loginVO = userService.login(loginDTO);
         return Result.success(loginVO);
+    }
+
+    public Result<LoginVO> loginBlockHandler(LoginDTO loginDTO, BlockException ex) {
+        return Result.fail("登录请求过于频繁，请稍后重试");
     }
 
     @Operation(summary = "获取当前用户信息")

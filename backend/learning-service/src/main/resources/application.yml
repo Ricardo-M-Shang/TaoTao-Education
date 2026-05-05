@@ -7,14 +7,14 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
-        username: nacos
-        password: nacos
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
       config:
-        server-addr: 127.0.0.1:8848
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
         file-extension: yaml
-        username: nacos
-        password: nacos
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
   config:
     import:
       - optional:nacos:learning-service.yaml
@@ -22,16 +22,16 @@ spring:
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/taotao_education?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8
-    username: root
-    password: 560868042a
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:taotao_education}?useUnicode=true&characterEncoding=utf8&serverTimezone=GMT%2B8
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:560868042a}
     
   # Redis配置
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: 
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       database: 0
       jedis:
         pool:

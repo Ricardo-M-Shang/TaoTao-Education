@@ -7,17 +7,17 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8848
-        username: nacos
-        password: nacos
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
       config:
-        server-addr: 127.0.0.1:8848
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
         file-extension: yaml
-        username: nacos
-        password: nacos
+        username: ${NACOS_USERNAME:nacos}
+        password: ${NACOS_PASSWORD:nacos}
     sentinel:
       transport:
-        dashboard: localhost:8858
+        dashboard: ${SENTINEL_DASHBOARD:localhost:8858}
       eager: true
   config:
     import:
@@ -26,15 +26,15 @@ spring:
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/taotao_education?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 560868042a
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:taotao_education}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:560868042a}
   
   # Redis配置
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
       database: 0
 
   # 文件上传配置 (Spring Boot 2.x/3.x)
@@ -74,12 +74,10 @@ knife4j:
 # 自定义文件上传路径配置
 file:
   upload-path: uploads
-  access-url: http://localhost:8081/uploads
+  access-url: ${FILE_ACCESS_URL:http://localhost:8081/uploads}
 
 # 日志配置
 logging:
-  file:
-    name: c:/Users/shang/Desktop/实习项目/TaoTao-Education/backend/logs/user-service.log
   level:
     com.taotao.education: DEBUG
     org.springframework.web: DEBUG

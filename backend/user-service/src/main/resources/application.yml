@@ -82,3 +82,11 @@ logging:
     com.taotao.education: DEBUG
     org.springframework.web: DEBUG
     org.hibernate: INFO
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}

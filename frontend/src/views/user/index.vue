@@ -283,9 +283,10 @@ async function handleAvatarUpload(options: any) {
 async function saveProfile() {
   saving.value = true
   try {
+    const email = profileForm.email?.trim()
     await updateUserInfo({
       nickname: profileForm.nickname,
-      email: profileForm.email,
+      email: email || undefined,
       avatar: profileForm.avatar,
       gender: profileForm.gender,
       province: profileForm.province,

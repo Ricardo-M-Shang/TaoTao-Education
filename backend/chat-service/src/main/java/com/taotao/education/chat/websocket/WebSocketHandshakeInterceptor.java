@@ -1,5 +1,6 @@
 package com.taotao.education.chat.websocket;
 
+import com.taotao.education.common.utils.JwtUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -21,18 +22,32 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
         if (request instanceof ServletServerHttpRequest servletRequest) {
-            // 从请求参数获取roomId和userId
+            // 从请求参数获取 roomId，userId 优先从 token 解析（避免前端大整数精度丢失）
             String roomIdStr = servletRequest.getServletRequest().getParameter("roomId");
             String userIdStr = servletRequest.getServletRequest().getParameter("userId");
+            String token = servletRequest.getServletRequest().getParameter("token");
 
-            if (roomIdStr == null || userIdStr == null) {
-                log.warn("WebSocket握手失败：缺少roomId或userId参数");
+            if (roomIdStr == null) {
+                log.warn("WebSocket握手失败：缺少roomId参数");
                 return false;
             }
 
             try {
                 Long roomId = Long.parseLong(roomIdStr);
-                Long userId = Long.parseLong(userIdStr);
+                Long userId = null;
+
+                // 优先使用 token 解析 userId（更准确）
+                if (token != null && !token.isBlank() && JwtUtils.validateToken(token)) {
+                    userId = JwtUtils.getUserId(token);
+                } else if (userIdStr != null && !userIdStr.isBlank()) {
+                    // 兼容旧逻辑：从 userId 参数读取
+                    userId = Long.parseLong(userIdStr);
+                }
+
+                if (userId == null) {
+                    log.warn("WebSocket握手失败：缺少可用的用户身份信息");
+                    return false;
+                }
                 
                 attributes.put("roomId", roomId);
                 attributes.put("userId", userId);

@@ -45,7 +45,7 @@
           <div class="section">
             <div class="section-header">
               <h3>正在学习</h3>
-              <router-link to="/study/courses" class="more-link">查看全部</router-link>
+              <router-link to="/user/courses" class="more-link">查看全部</router-link>
             </div>
             <div class="learning-courses">
               <div v-if="learningCourses.length === 0" class="empty-state">
@@ -204,6 +204,7 @@ import {
   getRecentStudyRecords,
   getLearningAdvice,
   getCompletionDistribution,
+  updateUserStats,
   type UserLearningStats,
   type LearningStats,
   type StudyRecord
@@ -277,14 +278,10 @@ function goToCourse(courseId: number) {
 async function loadData() {
   loading.value = true
   try {
-    const [
-      userStatsRes,
-      levelRes,
-      learningCoursesRes,
-      recentRecordsRes,
-      adviceRes,
-      distributionRes
-    ] = await Promise.all([
+    // 先触发一次后端统计刷新，避免首次进入拿到旧聚合数据
+    await updateUserStats().catch(() => undefined)
+
+    const results = await Promise.allSettled([
       getUserLearningStats(),
       getUserLevel(),
       getLearningCourses(),
@@ -293,12 +290,34 @@ async function loadData() {
       getCompletionDistribution()
     ])
 
-    userStats.value = userStatsRes.data
-    userLevel.value = levelRes.data
-    learningCourses.value = learningCoursesRes.data || []
-    recentRecords.value = recentRecordsRes.data || []
-    advice.value = adviceRes.data || []
-    completionDistribution.value = distributionRes.data || []
+    const [
+      userStatsRes,
+      levelRes,
+      learningCoursesRes,
+      recentRecordsRes,
+      adviceRes,
+      distributionRes
+    ] = results
+
+    if (userStatsRes.status === 'fulfilled') {
+      userStats.value = userStatsRes.value.data
+    }
+    if (levelRes.status === 'fulfilled') {
+      userLevel.value = levelRes.value.data
+    }
+    if (learningCoursesRes.status === 'fulfilled') {
+      learningCourses.value = learningCoursesRes.value.data || []
+    }
+    if (recentRecordsRes.status === 'fulfilled') {
+      recentRecords.value = recentRecordsRes.value.data || []
+    }
+    if (adviceRes.status === 'fulfilled') {
+      advice.value = adviceRes.value.data || []
+    }
+    if (distributionRes.status === 'fulfilled') {
+      completionDistribution.value = distributionRes.value.data || []
+    }
+
   } catch (error) {
     console.error('加载学习数据失败:', error)
   } finally {

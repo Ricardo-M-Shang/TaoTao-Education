@@ -14,9 +14,15 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -31,6 +37,7 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
 
     @Override
     public LearningStatsVO getCourseStats(Long userId, Long courseId) {
+        syncSingleCourseStatsFromRecords(userId, courseId);
         LambdaQueryWrapper<LearningStats> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(LearningStats::getUserId, userId)
                 .eq(LearningStats::getCourseId, courseId);
@@ -47,6 +54,7 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
 
     @Override
     public List<LearningStatsVO> getUserCourseStats(Long userId) {
+        syncUserCourseStatsFromRecords(userId);
         List<LearningStats> statsList = baseMapper.getUserCourseStats(userId);
         return statsList.stream()
                 .map(this::convertToVO)
@@ -55,6 +63,7 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
 
     @Override
     public List<LearningStatsVO> getLearningCourses(Long userId) {
+        syncUserCourseStatsFromRecords(userId);
         List<LearningStats> statsList = baseMapper.getLearningCourses(userId);
         return statsList.stream()
                 .map(this::convertToVO)
@@ -63,6 +72,7 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
 
     @Override
     public List<LearningStatsVO> getCompletedCourses(Long userId) {
+        syncUserCourseStatsFromRecords(userId);
         List<LearningStats> statsList = baseMapper.getCompletedCourses(userId);
         return statsList.stream()
                 .map(this::convertToVO)
@@ -86,9 +96,9 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
         
         LearningStats stats = this.getOne(wrapper);
         
-        Integer completedLessons = (Integer) courseStats.get("completedLessons");
-        Integer totalStudyDuration = (Integer) courseStats.get("totalStudyDuration");
-        Integer studyDays = (Integer) courseStats.get("studyDays");
+        int completedLessons = toInt(courseStats.get("completedLessons"));
+        int totalStudyDuration = toInt(courseStats.get("totalStudyDuration"));
+        int studyDays = toInt(courseStats.get("studyDays"));
 
         if (stats == null) {
             // 创建新的统计记录
@@ -99,27 +109,25 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
         }
 
         // 更新统计数据
-        stats.setCompletedLessons(completedLessons != null ? completedLessons : 0);
-        stats.setStudyDuration(totalStudyDuration != null ? totalStudyDuration : 0);
-        stats.setStudyDays(studyDays != null ? studyDays : 0);
+        stats.setCompletedLessons(completedLessons);
+        stats.setStudyDuration(totalStudyDuration);
+        stats.setStudyDays(studyDays);
         stats.setLastStudyTime(LocalDateTime.now());
+        stats.setIsFinished(0);
 
         // 计算日均学习时长
-        if (studyDays != null && studyDays > 0) {
+        if (studyDays > 0) {
             stats.setAvgDailyDuration(totalStudyDuration / studyDays);
+        } else {
+            stats.setAvgDailyDuration(0);
         }
 
         // TODO: 这里需要调用course-service获取课程总课时数来计算准确的完成率
         // 暂时使用已完成课时数来估算
-        if (completedLessons != null && completedLessons > 0) {
-            // 假设课程有20个课时（实际应该从课程服务获取）
-            stats.setTotalLessons(20);
-            stats.setCompletionRate((double) completedLessons / 20 * 100);
-            
-            // 判断是否完成课程
-            if (completedLessons >= 20) {
-                stats.setIsFinished(1);
-            }
+        stats.setTotalLessons(20);
+        stats.setCompletionRate((double) completedLessons / 20 * 100);
+        if (completedLessons >= 20) {
+            stats.setIsFinished(1);
         }
 
         this.saveOrUpdate(stats);
@@ -127,6 +135,7 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
 
     @Override
     public void updateUserCourseStats(Long userId) {
+        syncUserCourseStatsFromRecords(userId);
         // 获取用户所有课程的学习统计并更新
         List<LearningStats> allStats = baseMapper.selectList(
             new LambdaQueryWrapper<LearningStats>()
@@ -141,7 +150,120 @@ public class LearningStatsServiceImpl extends ServiceImpl<LearningStatsMapper, L
 
     @Override
     public List<Map<String, Object>> getCompletionRateDistribution(Long userId) {
+        syncUserCourseStatsFromRecords(userId);
         return baseMapper.getCompletionRateDistribution(userId);
+    }
+
+    private void syncUserCourseStatsFromRecords(Long userId) {
+        Set<Long> courseIds = new HashSet<>();
+        List<Long> learningCourseIds = studyRecordMapper.getUserStudiedCourseIds(userId);
+        if (learningCourseIds != null) {
+            courseIds.addAll(learningCourseIds);
+        }
+        List<Long> courseServiceCourseIds = studyRecordMapper.getUserStudiedCourseIdsFromCourseService(userId);
+        if (courseServiceCourseIds != null) {
+            courseIds.addAll(courseServiceCourseIds);
+        }
+        if (courseIds.isEmpty()) {
+            return;
+        }
+        for (Long courseId : courseIds.stream().filter(Objects::nonNull).toList()) {
+            try {
+                syncSingleCourseStatsFromRecords(userId, courseId);
+            } catch (Exception e) {
+                log.error("同步课程学习统计失败: userId={}, courseId={}", userId, courseId, e);
+            }
+        }
+    }
+
+    private void syncSingleCourseStatsFromRecords(Long userId, Long courseId) {
+        importCourseServiceRecordsIfNeeded(userId, courseId);
+        updateCourseStats(userId, courseId);
+    }
+
+    private void importCourseServiceRecordsIfNeeded(Long userId, Long courseId) {
+        Integer count = studyRecordMapper.countLearningRecordsByCourse(userId, courseId);
+        if (count != null && count > 0) {
+            return;
+        }
+
+        List<Map<String, Object>> sourceRecords = studyRecordMapper.getCourseServiceStudyRecords(userId, courseId);
+        if (sourceRecords == null || sourceRecords.isEmpty()) {
+            return;
+        }
+
+        for (Map<String, Object> source : sourceRecords) {
+            StudyRecord record = new StudyRecord();
+            record.setUserId(userId);
+            record.setCourseId(courseId);
+            record.setLessonId(toLong(source.get("lessonId")));
+
+            int duration = toInt(source.get("duration"));
+            int progress = toInt(source.get("progress"));
+            int isFinished = toInt(source.get("isFinished"));
+            LocalDateTime updateTime = toLocalDateTime(source.get("updateTime"));
+
+            record.setStudyDuration(duration);
+            record.setVideoDuration(Math.max(duration, 0));
+            record.setLastPosition(Math.max(duration, 0));
+            record.setProgressPercent((double) Math.max(progress, 0));
+            record.setIsCompleted(isFinished > 0 ? 1 : 0);
+            record.setStudyDate(updateTime != null ? updateTime.toLocalDate() : LocalDate.now());
+            record.setDeviceType("course-sync");
+
+            if (updateTime != null) {
+                record.setCreateTime(updateTime);
+                record.setUpdateTime(updateTime);
+            }
+            studyRecordMapper.insert(record);
+        }
+    }
+
+    private int toInt(Object value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return Integer.parseInt(value.toString());
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(value.toString());
+    }
+
+    private LocalDateTime toLocalDateTime(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof LocalDateTime dateTime) {
+            return dateTime;
+        }
+        if (value instanceof java.sql.Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        if (value instanceof java.util.Date date) {
+            return LocalDateTime.ofInstant(date.toInstant(), java.time.ZoneId.systemDefault());
+        }
+
+        String text = value.toString();
+        try {
+            return LocalDateTime.parse(text, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        } catch (DateTimeParseException e) {
+            try {
+                return LocalDateTime.parse(text);
+            } catch (DateTimeParseException ignore) {
+                log.warn("无法解析时间格式: {}", text);
+                return null;
+            }
+        }
     }
 
     /**

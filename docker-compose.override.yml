@@ -1,0 +1,15 @@
+services:
+  nacos1:
+    mem_limit: 512m
+    environment:
+      JVM_XMS: 192m
+      JVM_XMX: 256m
+      JVM_MS: 128m
+      JVM_MMS: 128m
+  nacos2:
+    mem_limit: 512m
+    environment:
+      JVM_XMS: 192m
+      JVM_XMX: 256m
+      JVM_MS: 128m
+      JVM_MMS: 128m

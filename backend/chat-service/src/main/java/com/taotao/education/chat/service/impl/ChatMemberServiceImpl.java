@@ -1,6 +1,5 @@
 package com.taotao.education.chat.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.taotao.education.chat.entity.ChatMember;
 import com.taotao.education.chat.entity.ChatRoom;
@@ -17,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -104,12 +104,17 @@ public class ChatMemberServiceImpl extends ServiceImpl<ChatMemberMapper, ChatMem
         
         // 获取在线用户
         Set<Object> onlineUsers = redisTemplate.opsForSet().members(ONLINE_USERS_KEY + roomId);
+        Set<String> onlineUserIds = onlineUsers == null ? Set.of() : onlineUsers.stream()
+            .filter(Objects::nonNull)
+            .map(String::valueOf)
+            .map(v -> v.replace("\"", "")) // 兼容 JSON serializer 可能带引号的情况
+            .collect(Collectors.toSet());
 
         return members.stream()
             .map(member -> {
                 ChatMemberVO vo = new ChatMemberVO();
                 BeanUtils.copyProperties(member, vo);
-                vo.setIsOnline(onlineUsers != null && onlineUsers.contains(member.getUserId().toString()));
+                vo.setIsOnline(onlineUserIds.contains(String.valueOf(member.getUserId())));
                 return vo;
             })
             .collect(Collectors.toList());

@@ -20,7 +20,7 @@ public class UserUpdateDTO {
     private String avatar;
 
     @Schema(description = "邮箱")
-    @Pattern(regexp = "^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$", message = "邮箱格式不正确")
+    @Pattern(regexp = "^$|^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$", message = "邮箱格式不正确")
     private String email;
 
     @Schema(description = "性别 0-未知 1-男 2-女")

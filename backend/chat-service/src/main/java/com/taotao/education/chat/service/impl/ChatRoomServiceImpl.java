@@ -152,6 +152,9 @@ public class ChatRoomServiceImpl extends ServiceImpl<ChatRoomMapper, ChatRoom> i
 
     @Override
     public List<ChatRoomVO> getUserRooms(Long userId) {
+        // 学员购课后未显式加入聊天室时，按已购课程自动补齐成员关系
+        syncPurchasedCourseRoomMembership(userId);
+
         List<ChatRoom> rooms = baseMapper.getUserRooms(userId);
         return rooms.stream()
             .map(room -> {
@@ -306,6 +309,56 @@ public class ChatRoomServiceImpl extends ServiceImpl<ChatRoomMapper, ChatRoom> i
         ChatRoomVO vo = new ChatRoomVO();
         BeanUtils.copyProperties(room, vo);
         return vo;
+    }
+
+    /**
+     * 根据已购课程自动加入对应聊天室：
+     * - 已支付订单(status=1)关联到课程聊天室
+     * - 若成员记录不存在，自动创建普通成员
+     * - 若成员记录存在但已退出(status=0)，自动重新激活
+     */
+    private void syncPurchasedCourseRoomMembership(Long userId) {
+        // 获取用户基本资料（用于入群成员展示）
+        String userSql = """
+            SELECT nickname, avatar
+            FROM t_user
+            WHERE id = ? AND deleted = 0
+            """;
+        List<Map<String, Object>> userRows = jdbcTemplate.queryForList(userSql, userId);
+        if (userRows.isEmpty()) {
+            return;
+        }
+        String nickname = (String) userRows.get(0).get("nickname");
+        String avatar = (String) userRows.get(0).get("avatar");
+
+        // 查询该用户已购课程对应的聊天室（排除创建者，避免角色冲突）
+        String roomSql = """
+            SELECT DISTINCT r.id
+            FROM t_chat_room r
+            INNER JOIN t_order o ON o.course_id = r.course_id
+            WHERE o.user_id = ?
+              AND o.status = 1
+              AND o.deleted = 0
+              AND r.deleted = 0
+              AND r.creator_id <> ?
+            """;
+        List<Long> roomIds = jdbcTemplate.queryForList(roomSql, Long.class, userId, userId);
+        for (Long roomId : roomIds) {
+            if (roomId == null) {
+                continue;
+            }
+            ChatMember member = memberMapper.getMember(roomId, userId);
+            if (member == null || member.getStatus() == 0) {
+                try {
+                    // 角色1=普通成员；joinRoom会自动处理新增或重新激活
+                    memberService.joinRoom(userId, roomId, nickname, avatar, 1);
+                } catch (BusinessException ex) {
+                    // 避免单个聊天室异常影响列表查询
+                    log.warn("自动补齐聊天室成员失败, userId={}, roomId={}, reason={}",
+                        userId, roomId, ex.getMessage());
+                }
+            }
+        }
     }
 }
 

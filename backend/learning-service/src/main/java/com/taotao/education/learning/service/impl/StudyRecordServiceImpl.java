@@ -115,8 +115,11 @@ public class StudyRecordServiceImpl extends ServiceImpl<StudyRecordMapper, Study
 
         // 这里需要调用course-service获取课程总课时数来计算准确的进度
         // 暂时使用已完成课时数作为进度参考
-        Integer completedLessons = (Integer) stats.get("completedLessons");
-        return completedLessons != null ? completedLessons.doubleValue() : 0.0;
+        Object completedLessons = stats.get("completedLessons");
+        if (completedLessons instanceof Number number) {
+            return number.doubleValue();
+        }
+        return completedLessons != null ? Double.parseDouble(completedLessons.toString()) : 0.0;
     }
 
     @Override

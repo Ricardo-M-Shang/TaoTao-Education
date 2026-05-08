@@ -161,6 +161,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowRight, VideoPlay, CircleCheck, EditPen, Plus, Notebook } from '@element-plus/icons-vue'
 import { getCourseDetail } from '@/api/course'
 import { getCourseStudyRecords, updateStudyProgress, getCourseProgress, StudyRecord } from '@/api/study'
+import { recordStudyProgress } from '@/api/learning'
 import { updateProgress as updateUserCourseProgress } from '@/api/userCourse'
 import { getLessonNotes, saveNote, updateNote, deleteNote, NoteInfo } from '@/api/note'
 import type { CourseDetail, LessonInfo } from '@/types/course'
@@ -313,6 +314,7 @@ async function handleSaveNote() {
   }
   
   if (!currentLesson.value || !course.value) return
+  const courseId = Number(course.value.id)
   
   savingNote.value = true
   try {
@@ -321,7 +323,7 @@ async function handleSaveNote() {
       ElMessage.success('笔记已更新')
     } else {
       await saveNote({
-        courseId: course.value.id,
+        courseId,
         lessonId: currentLesson.value.id,
         content: noteForm.content,
         videoTime: noteForm.linkToTime ? Math.floor(videoRef.value?.currentTime || 0) : undefined
@@ -384,6 +386,7 @@ function stopProgressReport() {
 
 async function saveProgress(isFinished = false) {
   if (!currentLesson.value || !course.value || !videoRef.value) return
+  const courseId = Number(course.value.id)
   
   const duration = Math.floor(videoRef.value.currentTime)
   let progress = 0
@@ -394,15 +397,31 @@ async function saveProgress(isFinished = false) {
   if (isFinished) {
     progress = 100
   }
+
+  const reportDuration = 10
+  const videoDuration = currentLesson.value.duration || 0
+  const lastPosition = Math.floor(videoRef.value.currentTime)
+  const isCompleted = progress >= 90 ? 1 : 0
   
   try {
-    await updateStudyProgress({
-      courseId: course.value.id,
-      lessonId: currentLesson.value.id,
-      chapterId: currentChapterId.value || undefined,
-      duration: 10,
-      progress
-    })
+    await Promise.all([
+      updateStudyProgress({
+        courseId,
+        lessonId: currentLesson.value.id,
+        chapterId: currentChapterId.value || undefined,
+        duration: reportDuration,
+        progress
+      }),
+      recordStudyProgress({
+        courseId,
+        lessonId: currentLesson.value.id,
+        studyDuration: reportDuration,
+        videoDuration,
+        lastPosition,
+        isCompleted,
+        deviceType: 'web'
+      })
+    ])
     
     // 更新本地记录
     const existingIndex = studyRecords.value.findIndex(r => r.lessonId === currentLesson.value!.id)
@@ -415,7 +434,7 @@ async function saveProgress(isFinished = false) {
     } else {
       studyRecords.value.push({
         id: 0,
-        courseId: course.value.id,
+        courseId,
         lessonId: currentLesson.value.id,
         chapterId: currentChapterId.value || 0,
         duration,
@@ -433,10 +452,11 @@ async function saveProgress(isFinished = false) {
 
 async function refreshCourseProgress() {
   if (!course.value) return
+  const courseId = Number(course.value.id)
   try {
-    const res = await getCourseProgress(course.value.id)
+    const res = await getCourseProgress(courseId)
     courseProgress.value = res.data || 0
-    await updateUserCourseProgress(course.value.id, courseProgress.value)
+    await updateUserCourseProgress(courseId, courseProgress.value)
   } catch (e) {
     console.error(e)
   }
@@ -468,6 +488,11 @@ function playNextLesson() {
 async function load() {
   const id = route.params.id as string
   if (!id) return
+  if (!/^\d+$/.test(id)) {
+    ElMessage.error('课程ID无效')
+    router.replace('/course')
+    return
+  }
   loading.value = true
   try {
     const [courseRes, recordsRes, progressRes] = await Promise.all([

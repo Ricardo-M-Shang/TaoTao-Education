@@ -12,7 +12,9 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -133,15 +135,17 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
 
         try {
-            String messageJson = objectMapper.writeValueAsString(Map.of(
-                "type", type,
-                "data", data
-            ));
-            TextMessage textMessage = new TextMessage(messageJson);
-
-            for (WebSocketSession session : sessions.values()) {
+            for (Map.Entry<Long, WebSocketSession> entry : sessions.entrySet()) {
+                Long sessionUserId = entry.getKey();
+                WebSocketSession session = entry.getValue();
                 if (session.isOpen()) {
                     try {
+                        Object sessionData = enrichDataForSession(type, data, sessionUserId);
+                        String messageJson = objectMapper.writeValueAsString(Map.of(
+                            "type", type,
+                            "data", sessionData
+                        ));
+                        TextMessage textMessage = new TextMessage(messageJson);
                         session.sendMessage(textMessage);
                     } catch (IOException e) {
                         log.error("发送消息失败", e);
@@ -157,27 +161,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
      * 从 Redis 接收广播消息并转发到本地 WebSocket
      */
     public void broadcastFromRedis(Long roomId, String type, String dataJson) {
-        Map<Long, WebSocketSession> sessions = roomSessions.get(roomId);
-        if (sessions == null || sessions.isEmpty()) {
-            return;
-        }
-
         try {
-            String messageJson = objectMapper.writeValueAsString(Map.of(
-                "type", type,
-                "data", objectMapper.readValue(dataJson, Object.class)
-            ));
-            TextMessage textMessage = new TextMessage(messageJson);
-
-            for (WebSocketSession session : sessions.values()) {
-                if (session.isOpen()) {
-                    try {
-                        session.sendMessage(textMessage);
-                    } catch (IOException e) {
-                        log.error("发送 Redis 广播消息失败", e);
-                    }
-                }
-            }
+            Object data = objectMapper.readValue(dataJson, Object.class);
+            // 复用本地广播逻辑，按会话动态补充 isMine
+            broadcastToLocalSessions(roomId, type, data);
         } catch (Exception e) {
             log.error("处理 Redis 广播消息失败", e);
         }
@@ -226,6 +213,26 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
         WebSocketSession session = sessions.get(userId);
         return session != null && session.isOpen();
+    }
+
+    /**
+     * 按会话补充消息字段（目前仅 message 类型补充 isMine）
+     */
+    private Object enrichDataForSession(String type, Object data, Long sessionUserId) {
+        if (!"message".equals(type) || data == null) {
+            return data;
+        }
+        try {
+            Map<String, Object> map = objectMapper.convertValue(data, Map.class);
+            Map<String, Object> sessionMap = new LinkedHashMap<>(map);
+            Object senderId = sessionMap.get("senderId");
+            boolean isMine = senderId != null && Objects.equals(String.valueOf(senderId), String.valueOf(sessionUserId));
+            sessionMap.put("isMine", isMine);
+            return sessionMap;
+        } catch (Exception e) {
+            log.warn("按会话补充isMine失败，回退原消息: {}", e.getMessage());
+            return data;
+        }
     }
 
     /**

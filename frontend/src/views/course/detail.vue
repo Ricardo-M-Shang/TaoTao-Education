@@ -365,6 +365,11 @@ function getLessonFinished(lessonId: number) {
 async function load() {
   const id = route.params.id as string
   if (!id) return
+  if (!/^\d+$/.test(id)) {
+    ElMessage.error('课程ID无效')
+    router.replace('/course')
+    return
+  }
   loading.value = true
   try {
     const res = await getCourseDetail(id)

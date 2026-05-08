@@ -19,13 +19,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '课程列表' }
       },
       {
-        path: 'course/:id',
+        path: 'course/:id(\\d+)',
         name: 'CourseDetail',
         component: () => import('@/views/course/detail.vue'),
         meta: { title: '课程详情' }
       },
       {
-        path: 'study/:id',
+        path: 'study/:id(\\d+)',
         name: 'CourseStudy',
         component: () => import('@/views/course/study.vue'),
         meta: { title: '课程学习', requireAuth: true }
@@ -217,7 +217,7 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   // 设置页面标题
   document.title = `${to.meta.title || 'TaoTao'} - TaoTao在线教育平台`
 
@@ -225,6 +225,14 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.requireAuth) {
     const userStore = useUserStore()
     if (!userStore.isLoggedIn) {
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+    // token存在但userInfo为空时，先尝试拉取用户信息，避免角色路由误判
+    if (!userStore.userInfo) {
+      await userStore.fetchUserInfo()
+    }
+    if (!userStore.userInfo) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
       return
     }

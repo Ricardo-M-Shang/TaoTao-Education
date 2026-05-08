@@ -427,10 +427,12 @@ export function recallChatMessage(messageId: number): Promise<ApiResponse<void>>
 export function createChatWebSocket(roomId: string | number, userId: string | number): WebSocket {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
+  const token = localStorage.getItem('token') || ''
+  const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : ''
   // 开发环境直接连接chat-service（注意context-path是/api/chat）
   const wsUrl = import.meta.env.DEV 
-    ? `ws://localhost:9005/api/chat/ws/chat?roomId=${roomId}&userId=${userId}`
-    : `${protocol}//${host}/ws/chat?roomId=${roomId}&userId=${userId}`
+    ? `ws://localhost:9005/api/chat/ws/chat?roomId=${roomId}&userId=${userId}${tokenQuery}`
+    : `${protocol}//${host}/ws/chat?roomId=${roomId}&userId=${userId}${tokenQuery}`
   return new WebSocket(wsUrl)
 }
 

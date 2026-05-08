@@ -7,6 +7,15 @@ export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
   const userInfo = ref<UserInfo | null>(null)
 
+  const cachedUserInfo = localStorage.getItem('userInfo')
+  if (cachedUserInfo) {
+    try {
+      userInfo.value = JSON.parse(cachedUserInfo) as UserInfo
+    } catch (_e) {
+      localStorage.removeItem('userInfo')
+    }
+  }
+
   const isLoggedIn = computed(() => !!token.value)
 
   // 登录
@@ -23,6 +32,7 @@ export const useUserStore = defineStore('user', () => {
       avatar: res.data.avatar,
       role: res.data.role
     }
+    localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
     
     return res
   }
@@ -33,12 +43,14 @@ export const useUserStore = defineStore('user', () => {
     try {
       const res = await getUserInfo()
       userInfo.value = res.data
+      localStorage.setItem('userInfo', JSON.stringify(userInfo.value))
     } catch (error) {
       console.error('获取用户信息失败', error)
       // token失效时清理本地
       token.value = ''
       userInfo.value = null
       localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
     }
   }
 
@@ -52,6 +64,7 @@ export const useUserStore = defineStore('user', () => {
       token.value = ''
       userInfo.value = null
       localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
     }
   }
 

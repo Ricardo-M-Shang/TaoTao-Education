@@ -36,7 +36,7 @@ public class CourseController {
     }
 
     @Operation(summary = "获取课程详情")
-    @GetMapping("/detail/{courseId}")
+    @GetMapping("/detail/{courseId:\\d+}")
     @SentinelResource(value = "course:detail", blockHandler = "detailBlockHandler")
     public Result<CourseDetailVO> detail(@PathVariable Long courseId) {
         CourseDetailVO detail = courseService.getDetail(courseId);
@@ -60,7 +60,7 @@ public class CourseController {
     }
 
     @Operation(summary = "更新课程")
-    @PutMapping("/update/{courseId}")
+    @PutMapping("/update/{courseId:\\d+}")
     public Result<Void> update(@PathVariable Long courseId,
                                @Valid @RequestBody CourseUpdateDTO updateDTO) {
         courseService.updateCourse(courseId, updateDTO);
@@ -68,14 +68,14 @@ public class CourseController {
     }
 
     @Operation(summary = "发布课程")
-    @PostMapping("/publish/{courseId}")
+    @PostMapping("/publish/{courseId:\\d+}")
     public Result<Void> publish(@PathVariable Long courseId) {
         courseService.publishCourse(courseId);
         return Result.success();
     }
 
     @Operation(summary = "下架课程")
-    @PostMapping("/offline/{courseId}")
+    @PostMapping("/offline/{courseId:\\d+}")
     public Result<Void> offline(@PathVariable Long courseId) {
         courseService.offlineCourse(courseId);
         return Result.success();
